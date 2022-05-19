@@ -8,3 +8,5 @@ __pycache__
 # Ignore data
 *.csv
 
+# Mac/OSX
+.DS_Store
