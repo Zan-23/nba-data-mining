@@ -79,7 +79,7 @@ def download_and_save_url_data(data_urls_arr):
 
 
 def scraper_main():
-    os.path.join(os.path.dirname("./../.."), 'test.txt')
+    os.path.join(os.path.dirname("./../.."))
     # get urls from the data page
     data_urls_arr = retrieve_data_urls_with_file_names()
 
