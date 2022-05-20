@@ -100,6 +100,29 @@ EVENTMSGACTIONTYPE_FIELD_GOAL_dict = {
     110: 'Running Reverse Dunk Shot'
 }
 
+EVENTMSGACTIONTYPE_FREE_THROW_dict = {
+    10 : "Free Throw 1 of 1",
+    11 : "Free Throw 1 of 2",
+    12 : "Free Throw 2 of 2",
+    13 : "Free Throw 1 of 3",
+    14 : "Free Throw 2 of 3",
+    15 : "Free Throw 3 of 3",
+    16 : "Free Throw Technical",
+    17 : "Free Throw Clear Path", #before 2006-07 season
+    18 : "Free Throw Flagrant 1 of 2",
+    19 : "Free Throw Flagrant 2 of 2",
+    20 : "Free Throw Flagrant 1 of 1",
+    21 : "Free Throw Technical 1 of 2",
+    22 : "Free Throw Technical 2 of 2",
+    23 : "Free Throw 1 of 2", #Guess
+    24 : "Free Throw 2 of 2", #Guess
+    25 : "Free Throw Clear Path 1 of 2", 
+    26 : "Free Throw Clear Path 2 of 2",
+    27 : "Free Throw Flagrant 1 of 3",
+    28 : "Free Throw Flagrant 2 of 3",
+    29 : "Free Throw Flagrant 3 of 3"
+}
+
 def load_data(columns = None, seasons = None, path = RAW_DATA_PATH, resolve = True):
     files = sorted([f for f in path.glob('*.csv')])
     season_dfs = []
@@ -116,6 +139,8 @@ def load_data(columns = None, seasons = None, path = RAW_DATA_PATH, resolve = Tr
                 season.loc[season["EVENTMSGTYPE"]==EVENTMSGTYPE_dict[1],"EVENTMSGACTIONTYPE"] = season.loc[season["EVENTMSGTYPE"]==EVENTMSGTYPE_dict[1],"EVENTMSGACTIONTYPE"].replace(EVENTMSGACTIONTYPE_FIELD_GOAL_dict)
             if columns == None or "EVENTMSGACTIONTYPE" in columns:
                 season.loc[season["EVENTMSGTYPE"]==EVENTMSGTYPE_dict[2],"EVENTMSGACTIONTYPE"] = season.loc[season["EVENTMSGTYPE"]==EVENTMSGTYPE_dict[2],"EVENTMSGACTIONTYPE"].replace(EVENTMSGACTIONTYPE_FIELD_GOAL_dict)
+            if columns == None or "EVENTMSGACTIONTYPE" in columns:
+                season.loc[season["EVENTMSGTYPE"]==EVENTMSGTYPE_dict[3],"EVENTMSGACTIONTYPE"] = season.loc[season["EVENTMSGTYPE"]==EVENTMSGTYPE_dict[3],"EVENTMSGACTIONTYPE"].replace(EVENTMSGACTIONTYPE_FREE_THROW_dict)
         #remove empty columns:
         if "NEUTRALDESCRIPTION" in season.columns:
             season = season.drop("NEUTRALDESCRIPTION", 1)
