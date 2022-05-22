@@ -1,3 +1,4 @@
 requests==2.27.1
 tqdm==4.62.3
 beautifulsoup4==4.10.0
+plotly==5.8.0
