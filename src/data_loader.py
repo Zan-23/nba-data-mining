@@ -19,6 +19,17 @@ EVENTMSGTYPE_dict = {
     13: "PERIOD_END"
 }
 
+PERSONTYPE_dict = {
+    0: 0,
+    1: "TIMEOUT",
+    2: "HOME_TEAM",
+    3: "VISITOR_TEAM",
+    4: "HOME_PLAYER",
+    5: "VISITOR_PLAYER",
+    6: "HOME_TEAM_FOUL",
+    7: "VISITOR_TEAM_FOUL"
+}
+
 EVENTMSGACTIONTYPE_FIELD_GOAL_dict = {
     0: "No Shot",
     1: "Jump Shot",
@@ -148,6 +159,7 @@ def load_data(columns=None, seasons=None, path=RAW_DATA_PATH, resolve=True):
     # TODO - check could be added if the sequence of the actions matches timestamps
     E_ACT_TYPE_STR = "EVENTMSGACTIONTYPE"
     E_TYPE_STR = "EVENTMSGTYPE"
+    P_TYPE_STR_LIST = [f"PERSON{i}TYPE" for i in [1, 2, 3]]
 
     files = sorted([f for f in path.glob("*.csv")])
     season_dfs = []
@@ -172,6 +184,9 @@ def load_data(columns=None, seasons=None, path=RAW_DATA_PATH, resolve=True):
                     .replace(EVENTMSGACTIONTYPE_FIELD_GOAL_dict)
                 season.loc[mask_free_throw_made, E_ACT_TYPE_STR] = season.loc[mask_free_throw_made, E_ACT_TYPE_STR]\
                     .replace(EVENTMSGACTIONTYPE_FREE_THROW_dict)
+            for P_TYPE_STR in P_TYPE_STR_LIST:
+                if columns is None or P_TYPE_STR in columns:
+                    season[P_TYPE_STR] = season[P_TYPE_STR].replace(PERSONTYPE_dict)
 
         # remove empty columns:
         if "NEUTRALDESCRIPTION" in season.columns:
