@@ -146,6 +146,8 @@ column_names = ["Unnamed: 0", "EVENTMSGACTIONTYPE", "EVENTMSGTYPE", "EVENTNUM",
                 "PLAYER3_TEAM_ID", "PLAYER3_TEAM_NICKNAME", "SCORE", "SCOREMARGIN",
                 "VISITORDESCRIPTION", "WCTIMESTRING"]
 
+dtype = {"PLAYER1_TEAM_ID": str, "PLAYER2_TEAM_ID": str, "PLAYER3_TEAM_ID": str, "PLAYER1_ID": str, "PLAYER2_ID":str, "PLAYER3_ID": str}
+
 
 def load_data(columns=None, seasons=None, path=RAW_DATA_PATH, resolve=True):
     """
@@ -159,7 +161,7 @@ def load_data(columns=None, seasons=None, path=RAW_DATA_PATH, resolve=True):
     # TODO - check could be added if the sequence of the actions matches timestamps
     E_ACT_TYPE_STR = "EVENTMSGACTIONTYPE"
     E_TYPE_STR = "EVENTMSGTYPE"
-    P_TYPE_STR_LIST = [f"PERSON{i}TYPE" for i in [1, 2, 3]]
+    P_TYPE_STR_LIST = [f"PERSON{i}TYPE" for i in [1, 2, 3]] #For Person3 there seem to be some random 1 : Timeout
 
     files = sorted([f for f in path.glob("*.csv")])
     season_dfs = []
@@ -167,7 +169,7 @@ def load_data(columns=None, seasons=None, path=RAW_DATA_PATH, resolve=True):
         # Only read specified seasons:
         if seasons and (file_name.stem[:7] not in seasons):
             continue
-        season = pd.read_csv(file_name, usecols=columns)
+        season = pd.read_csv(file_name, usecols=columns, dtype=dtype)
 
         season["season_name"] = file_name.stem[:7]
         if resolve:
@@ -193,3 +195,31 @@ def load_data(columns=None, seasons=None, path=RAW_DATA_PATH, resolve=True):
             season = season.drop("NEUTRALDESCRIPTION", axis=1)
         season_dfs.append(season)
     return pd.concat(season_dfs).reset_index(drop=True) if season_dfs else None
+
+def load_game_data(columns=None, seasons=None, path=RAW_DATA_PATH):
+    GAME_ID_STR = "GAME_ID"
+    
+    pbp_data = load_data(seasons=seasons, path=path)
+    pbp_grouped = pbp_data.groupby(GAME_ID_STR)
+    
+    #Create DataFrame with first column "play_count"
+    game_data = pbp_grouped.size().to_frame(name="play_count")
+    #Add arbitrarily many features:
+
+    #Season name is the same for all plays in a game: Just get first.
+    game_data["season_name"] = pbp_grouped["season_name"].first()
+    #Get date and start/end time would be nice.
+
+    #Home team:
+    game_data["visitor_team_id"] = pbp_grouped.apply(lambda x: x[x["PERSON1TYPE"] == 'VISITOR_PLAYER']["PLAYER1_TEAM_ID"].iloc[0])
+    game_data["visitor_team_city"] = pbp_grouped.apply(lambda x: x[x["PERSON1TYPE"] == 'VISITOR_PLAYER']["PLAYER1_TEAM_CITY"].iloc[0])
+    game_data["visitor_team_nickname"] = pbp_grouped.apply(lambda x: x[x["PERSON1TYPE"] == 'VISITOR_PLAYER']["PLAYER1_TEAM_NICKNAME"].iloc[0])
+    #Score:
+    score = pbp_grouped["SCORE"].last()
+    game_data[["visitor_final_score", "home_final_score"]] = score.str.split(" - ", expand=True).astype(int)
+    #Visitor team:
+    game_data["home_team_id"] = pbp_grouped.apply(lambda x: x[x["PERSON1TYPE"] == 'HOME_PLAYER']["PLAYER1_TEAM_ID"].iloc[0])
+    game_data["home_team_city"] = pbp_grouped.apply(lambda x: x[x["PERSON1TYPE"] == 'HOME_PLAYER']["PLAYER1_TEAM_CITY"].iloc[0])
+    game_data["home_team_nickname"] = pbp_grouped.apply(lambda x: x[x["PERSON1TYPE"] == 'HOME_PLAYER']["PLAYER1_TEAM_NICKNAME"].iloc[0])
+    
+    return game_data
