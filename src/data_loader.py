@@ -230,6 +230,7 @@ def load_game_data(columns=None, seasons=None, path=RAW_DATA_PATH):
         game_data["visitor_team_nickname"] = pbp_grouped.apply(lambda x: x[x["PERSON1TYPE"] == 'VISITOR_PLAYER']["PLAYER1_TEAM_NICKNAME"].iloc[0])
         #Score:
         game_data[["visitor_final_score", "home_final_score"]] = pbp_grouped.apply(lambda x: x[~x["SCORE"].isna()]["SCORE"].str.split(" - ", expand =True).astype(int).max()) #Complicated because in ca. 5 games the score column is messed up and out of order.
+        game_data["home_win"] = game_data["visitor_final_score"]<game_data["home_final_score"]
         #Visitor team:
         game_data["home_team_id"] = pbp_grouped.apply(lambda x: x[x["PERSON1TYPE"] == 'HOME_PLAYER']["PLAYER1_TEAM_ID"].iloc[0])
         game_data["home_team_city"] = pbp_grouped.apply(lambda x: x[x["PERSON1TYPE"] == 'HOME_PLAYER']["PLAYER1_TEAM_CITY"].iloc[0])
@@ -237,6 +238,12 @@ def load_game_data(columns=None, seasons=None, path=RAW_DATA_PATH):
 
         #Number of periods played: >4 is overtime
         game_data["periods"] = pbp_grouped["PERIOD"].max()
+        #Minutes played:
+        game_data["minutes_played"] = 48 + (game_data["periods"]-4) * 2.5
+
+        #Players deployed
+        game_data["visitor_players_deployed"] = pbp_grouped.apply(lambda x: len(set.union(*[set(x[x[f"PERSON{i}TYPE"]=="VISITOR_PLAYER"][f"PLAYER{i}_ID"].unique()) for i in range(1,4)])))
+        game_data["home_players_deployed"] = pbp_grouped.apply(lambda x: len(set.union(*[set(x[x[f"PERSON{i}TYPE"]=="HOME_PLAYER"][f"PLAYER{i}_ID"].unique()) for i in range(1,4)])))
 
         #Field goal stats
         game_data["visitor_fg_made"] = pbp_grouped.apply(lambda x: (x["EVENTMSGTYPE"] == 'FIELD_GOAL_MADE') & (x["PERSON1TYPE"] == 'VISITOR_PLAYER')).sum(level=0)
