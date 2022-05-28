@@ -3,6 +3,7 @@ import random
 import time
 from datetime import datetime
 
+import numpy as np
 import pandas as pd
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
@@ -98,7 +99,7 @@ def get_player_info_season_urls():
     url_arr = []
     # get all urls from 2000 to 2019
     for i in range(2000, 2020):
-        season = f"{i}-{i+1}"
+        season = f"{i}-{str(i+1)[2:]}"
         url = f"{BASE_NBA_URL}?Season={season}&SeasonType=Regular%20Season&PerMode=Totals"
         url_arr.append((season, url))
     return url_arr
@@ -129,7 +130,7 @@ def scrape_player_bios_and_save_to_csv():
         print(f"{s_count:02d}/{len(url_arr)} - Started scraping on '{season_url}' ...")
         driver.get(season_url)
         # wait to load the data
-        driver.implicitly_wait(5)
+        driver.implicitly_wait(6)
         # Select to show all rows of players, gets the select element and changes the value to show all rows
         selector_page_el = driver.find_elements(by=By.XPATH,
                                                 value="//select[contains(@class, 'stats-table-pagination__select')]")[0]
@@ -144,7 +145,7 @@ def scrape_player_bios_and_save_to_csv():
         main_data_table = soup.find_all("div", {"class": "nba-stat-table"})[0]
 
         # get player IDs and name for each <a> element in table
-        player_id_name_dict = dict()
+        player_id_name_arr = []
         for a_el in soup.find_all("a", href=lambda value: value and value.startswith("/stats/player/")):
             # if there are duplicate slashes replace them with a single slash
             href_str = a_el["href"].replace("//", "/")
@@ -152,19 +153,23 @@ def scrape_player_bios_and_save_to_csv():
                 player_id = href_str.split("/")[-2]
                 if player_id.isdigit():
                     player_name = a_el.text.strip()
-                    if player_name in player_id_name_dict and player_id_name_dict[player_name] != player_id:
-                        raise Exception(f"Same player cannot have two different IDs: {player_name}! "
-                                        f"{player_id_name_dict[player_name]} != {player_id}")
-                    else:
-                        player_id_name_dict[player_name] = player_id
-        # convert dictionary to dataframe and prepare the columns for joining
-        player_id_df = pd.json_normalize(player_id_name_dict).T.reset_index()
-        player_id_df.columns = ["Player", "Player ID"]
+                    # because players can have the same name, so we can't use a dictionary
+                    player_id_name_arr.append((player_id, player_name))
+        # convert array to dataframe and prepare the columns for joining
+        player_id_df = pd.DataFrame(player_id_name_arr)
+        player_id_df.columns = ["Player ID", "Player"]
 
         # convert data from table to data frame and merge with player ID dataframe
-        data_frame = pd.read_html(str(main_data_table))[0].merge(player_id_df, on="Player")
-        data_frame["Season"] = season_str
-        main_df = pd.concat([main_df, data_frame], ignore_index=True)
+        temp_df = pd.read_html(str(main_data_table))[0]
+        temp_df["Player ID"] = np.nan
+        for index, row in temp_df.iterrows():
+            if temp_df.loc[index, "Player"] == player_id_df.loc[index, "Player"]:
+                temp_df.loc[index, "Player ID"] = player_id_df.loc[index, "Player ID"]
+            else:
+                raise Exception(f"Player names on the same indexes should match!!")
+
+        temp_df["Season"] = season_str
+        main_df = pd.concat([main_df, temp_df], ignore_index=True)
 
         print(f"{s_count:02d}/{len(url_arr)} - Finished scraping on '{season_url}', performing random sleep ...")
         time.sleep(random.random() * 4)
@@ -178,14 +183,14 @@ def scrape_player_bios_and_save_to_csv():
 
 
 def scraper_main():
+    # Code concerning the csv download
     # get urls from the data page
     data_urls_arr = retrieve_data_urls_with_file_names()
-
-    # TODO also scrape for player bios?
-    # scrape_player_bios_and_save_to_csv()
-
     # download and save the data
     download_and_save_url_data(data_urls_arr)
+
+    # Code that scrapes the player bios
+    scrape_player_bios_and_save_to_csv()
     print(f"End")
 
 
