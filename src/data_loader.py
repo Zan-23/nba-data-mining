@@ -247,61 +247,61 @@ def load_game_data(columns=None, seasons=None, path=RAW_DATA_PATH):
         game_data["home_players_deployed"] = pbp_grouped.apply(lambda x: len(set.union(*[set(x[x[f"PERSON{i}TYPE"]=="HOME_PLAYER"][f"PLAYER{i}_ID"].unique()) for i in range(1,4)])))
 
         #Field goal stats
-        game_data["visitor_fg_made"] = pbp_grouped.apply(lambda x: (x["EVENTMSGTYPE"] == 'FIELD_GOAL_MADE') & (x["PERSON1TYPE"] == 'VISITOR_PLAYER')).sum(level=0)
-        game_data["visitor_fg_missed"] = pbp_grouped.apply(lambda x: (x["EVENTMSGTYPE"] == 'FIELD_GOAL_MISSED') & (x["PERSON1TYPE"] == 'VISITOR_PLAYER')).sum(level=0)
-        game_data["visitor_3PT_made"] = pbp_grouped.apply(lambda x: (x["EVENTMSGTYPE"] == 'FIELD_GOAL_MADE') & (x["PERSON1TYPE"] == 'VISITOR_PLAYER') & (x["VISITORDESCRIPTION"].str.contains("3PT"))).sum(level=0)
-        game_data["visitor_3PT_missed"] = pbp_grouped.apply(lambda x: (x["EVENTMSGTYPE"] == 'FIELD_GOAL_MISSED') & (x["PERSON1TYPE"] == 'VISITOR_PLAYER') & (x["VISITORDESCRIPTION"].str.contains("3PT"))).sum(level=0)
-        game_data["home_fg_made"] = pbp_grouped.apply(lambda x: (x["EVENTMSGTYPE"] == 'FIELD_GOAL_MADE') & (x["PERSON1TYPE"] == 'HOME_PLAYER')).sum(level=0)
-        game_data["home_fg_missed"] = pbp_grouped.apply(lambda x: (x["EVENTMSGTYPE"] == 'FIELD_GOAL_MISSED') & (x["PERSON1TYPE"] == 'HOME_PLAYER')).sum(level=0)
-        game_data["home_3PT_made"] = pbp_grouped.apply(lambda x: (x["EVENTMSGTYPE"] == 'FIELD_GOAL_MADE') & (x["PERSON1TYPE"] == 'HOME_PLAYER') & (x["HOMEDESCRIPTION"].str.contains("3PT"))).sum(level=0)
-        game_data["home_3PT_missed"] = pbp_grouped.apply(lambda x: (x["EVENTMSGTYPE"] == 'FIELD_GOAL_MISSED') & (x["PERSON1TYPE"] == 'HOME_PLAYER') & (x["HOMEDESCRIPTION"].str.contains("3PT"))).sum(level=0)
+        game_data["visitor_fg_made"] = pbp_grouped.apply(lambda x: (x["EVENTMSGTYPE"] == 'FIELD_GOAL_MADE') & (x["PERSON1TYPE"] == 'VISITOR_PLAYER')).groupby(level=0).sum()
+        game_data["visitor_fg_missed"] = pbp_grouped.apply(lambda x: (x["EVENTMSGTYPE"] == 'FIELD_GOAL_MISSED') & (x["PERSON1TYPE"] == 'VISITOR_PLAYER')).groupby(level=0).sum()
+        game_data["visitor_3PT_made"] = pbp_grouped.apply(lambda x: (x["EVENTMSGTYPE"] == 'FIELD_GOAL_MADE') & (x["PERSON1TYPE"] == 'VISITOR_PLAYER') & (x["VISITORDESCRIPTION"].str.contains("3PT"))).groupby(level=0).sum()
+        game_data["visitor_3PT_missed"] = pbp_grouped.apply(lambda x: (x["EVENTMSGTYPE"] == 'FIELD_GOAL_MISSED') & (x["PERSON1TYPE"] == 'VISITOR_PLAYER') & (x["VISITORDESCRIPTION"].str.contains("3PT"))).groupby(level=0).sum()
+        game_data["home_fg_made"] = pbp_grouped.apply(lambda x: (x["EVENTMSGTYPE"] == 'FIELD_GOAL_MADE') & (x["PERSON1TYPE"] == 'HOME_PLAYER')).groupby(level=0).sum()
+        game_data["home_fg_missed"] = pbp_grouped.apply(lambda x: (x["EVENTMSGTYPE"] == 'FIELD_GOAL_MISSED') & (x["PERSON1TYPE"] == 'HOME_PLAYER')).groupby(level=0).sum()
+        game_data["home_3PT_made"] = pbp_grouped.apply(lambda x: (x["EVENTMSGTYPE"] == 'FIELD_GOAL_MADE') & (x["PERSON1TYPE"] == 'HOME_PLAYER') & (x["HOMEDESCRIPTION"].str.contains("3PT"))).groupby(level=0).sum()
+        game_data["home_3PT_missed"] = pbp_grouped.apply(lambda x: (x["EVENTMSGTYPE"] == 'FIELD_GOAL_MISSED') & (x["PERSON1TYPE"] == 'HOME_PLAYER') & (x["HOMEDESCRIPTION"].str.contains("3PT"))).groupby(level=0).sum()
 
         #Free throw stats
-        game_data["visitor_ft_made"] = pbp_grouped.apply(lambda x: (x["EVENTMSGTYPE"] == 'FREE_THROW') & (x["PERSON1TYPE"] == 'VISITOR_PLAYER') & (x["VISITORDESCRIPTION"].str.contains("MISS") == False)).sum(level=0)
-        game_data["visitor_ft_missed"] = pbp_grouped.apply(lambda x: (x["EVENTMSGTYPE"] == 'FREE_THROW') & (x["PERSON1TYPE"] == 'VISITOR_PLAYER') & (x["VISITORDESCRIPTION"].str.contains("MISS"))).sum(level=0)
-        game_data["home_ft_made"] = pbp_grouped.apply(lambda x: (x["EVENTMSGTYPE"] == 'FREE_THROW') & (x["PERSON1TYPE"] == 'HOME_PLAYER') & (x["HOMEDESCRIPTION"].str.contains("MISS") == False)).sum(level=0)
-        game_data["home_ft_missed"] = pbp_grouped.apply(lambda x: (x["EVENTMSGTYPE"] == 'FREE_THROW') & (x["PERSON1TYPE"] == 'HOME_PLAYER') & (x["HOMEDESCRIPTION"].str.contains("MISS"))).sum(level=0)
+        game_data["visitor_ft_made"] = pbp_grouped.apply(lambda x: (x["EVENTMSGTYPE"] == 'FREE_THROW') & (x["PERSON1TYPE"] == 'VISITOR_PLAYER') & (x["VISITORDESCRIPTION"].str.contains("MISS") == False)).groupby(level=0).sum()
+        game_data["visitor_ft_missed"] = pbp_grouped.apply(lambda x: (x["EVENTMSGTYPE"] == 'FREE_THROW') & (x["PERSON1TYPE"] == 'VISITOR_PLAYER') & (x["VISITORDESCRIPTION"].str.contains("MISS"))).groupby(level=0).sum()
+        game_data["home_ft_made"] = pbp_grouped.apply(lambda x: (x["EVENTMSGTYPE"] == 'FREE_THROW') & (x["PERSON1TYPE"] == 'HOME_PLAYER') & (x["HOMEDESCRIPTION"].str.contains("MISS") == False)).groupby(level=0).sum()
+        game_data["home_ft_missed"] = pbp_grouped.apply(lambda x: (x["EVENTMSGTYPE"] == 'FREE_THROW') & (x["PERSON1TYPE"] == 'HOME_PLAYER') & (x["HOMEDESCRIPTION"].str.contains("MISS"))).groupby(level=0).sum()
         
         #Rebound stats:
         #Player rebounds the ball in live game
-        game_data["visitor_rebound"] = pbp_grouped.apply(lambda x: (x["EVENTMSGTYPE"] == 'REBOUND') & (x["PERSON1TYPE"] == 'VISITOR_PLAYER') & (x["EVENTMSGACTIONTYPE"] == "live")).sum(level=0)
-        game_data["home_rebound"] = pbp_grouped.apply(lambda x: (x["EVENTMSGTYPE"] == 'REBOUND') & (x["PERSON1TYPE"] == 'HOME_PLAYER') & (x["EVENTMSGACTIONTYPE"] == "live")).sum(level=0)
+        game_data["visitor_rebound"] = pbp_grouped.apply(lambda x: (x["EVENTMSGTYPE"] == 'REBOUND') & (x["PERSON1TYPE"] == 'VISITOR_PLAYER') & (x["EVENTMSGACTIONTYPE"] == "live")).groupby(level=0).sum()
+        game_data["home_rebound"] = pbp_grouped.apply(lambda x: (x["EVENTMSGTYPE"] == 'REBOUND') & (x["PERSON1TYPE"] == 'HOME_PLAYER') & (x["EVENTMSGACTIONTYPE"] == "live")).groupby(level=0).sum()
         #Team gets the ball if out of bounds
-        game_data["visitor_team_rebound"] = pbp_grouped.apply(lambda x: (x["EVENTMSGTYPE"] == 'REBOUND') & (x["PERSON1TYPE"] == 'VISITOR_TEAM') & (x["EVENTMSGACTIONTYPE"] == "live")).sum(level=0)
-        game_data["home_team_rebound"] = pbp_grouped.apply(lambda x: (x["EVENTMSGTYPE"] == 'REBOUND') & (x["PERSON1TYPE"] == 'HOME_TEAM') & (x["EVENTMSGACTIONTYPE"] == "live")).sum(level=0)
+        game_data["visitor_team_rebound"] = pbp_grouped.apply(lambda x: (x["EVENTMSGTYPE"] == 'REBOUND') & (x["PERSON1TYPE"] == 'VISITOR_TEAM') & (x["EVENTMSGACTIONTYPE"] == "live")).groupby(level=0).sum()
+        game_data["home_team_rebound"] = pbp_grouped.apply(lambda x: (x["EVENTMSGTYPE"] == 'REBOUND') & (x["PERSON1TYPE"] == 'HOME_TEAM') & (x["EVENTMSGACTIONTYPE"] == "live")).groupby(level=0).sum()
 
         #Turnover stats:
         #Player turns the ball over: bad pass, offensive foul, ...
-        game_data["visitor_turnover"] = pbp_grouped.apply(lambda x: (x["EVENTMSGTYPE"] == 'TURNOVER') & (x["PERSON1TYPE"] == 'VISITOR_PLAYER')).sum(level=0)
-        game_data["home_turnover"] = pbp_grouped.apply(lambda x: (x["EVENTMSGTYPE"] == 'TURNOVER') & (x["PERSON1TYPE"] == 'HOME_PLAYER')).sum(level=0)
+        game_data["visitor_turnover"] = pbp_grouped.apply(lambda x: (x["EVENTMSGTYPE"] == 'TURNOVER') & (x["PERSON1TYPE"] == 'VISITOR_PLAYER')).groupby(level=0).sum()
+        game_data["home_turnover"] = pbp_grouped.apply(lambda x: (x["EVENTMSGTYPE"] == 'TURNOVER') & (x["PERSON1TYPE"] == 'HOME_PLAYER')).groupby(level=0).sum()
         #Team turn over: shot clock violation, 5 sec violation
-        game_data["visitor_team_turnover"] = pbp_grouped.apply(lambda x: (x["EVENTMSGTYPE"] == 'TURNOVER') & (x["PERSON1TYPE"] == 'VISITOR_TEAM')).sum(level=0)
-        game_data["home_team_turnover"] = pbp_grouped.apply(lambda x: (x["EVENTMSGTYPE"] == 'TURNOVER') & (x["PERSON1TYPE"] == 'HOME_TEAM')).sum(level=0)
+        game_data["visitor_team_turnover"] = pbp_grouped.apply(lambda x: (x["EVENTMSGTYPE"] == 'TURNOVER') & (x["PERSON1TYPE"] == 'VISITOR_TEAM')).groupby(level=0).sum()
+        game_data["home_team_turnover"] = pbp_grouped.apply(lambda x: (x["EVENTMSGTYPE"] == 'TURNOVER') & (x["PERSON1TYPE"] == 'HOME_TEAM')).groupby(level=0).sum()
 
         #Foul stats:
-        game_data["visitor_foul"] = pbp_grouped.apply(lambda x: (x["EVENTMSGTYPE"] == 'FOUL') & (x["PERSON1TYPE"] == 'VISITOR_PLAYER')).sum(level=0)
-        game_data["home_foul"] = pbp_grouped.apply(lambda x: (x["EVENTMSGTYPE"] == 'FOUL') & (x["PERSON1TYPE"] == 'HOME_PLAYER')).sum(level=0)
+        game_data["visitor_foul"] = pbp_grouped.apply(lambda x: (x["EVENTMSGTYPE"] == 'FOUL') & (x["PERSON1TYPE"] == 'VISITOR_PLAYER')).groupby(level=0).sum()
+        game_data["home_foul"] = pbp_grouped.apply(lambda x: (x["EVENTMSGTYPE"] == 'FOUL') & (x["PERSON1TYPE"] == 'HOME_PLAYER')).groupby(level=0).sum()
 
         #Substitution stats:
-        game_data["visitor_subs"] = pbp_grouped.apply(lambda x: (x["EVENTMSGTYPE"] == 'SUBSTITUTION') & (x["PERSON1TYPE"] == 'VISITOR_PLAYER')).sum(level=0)
-        game_data["home_subs"] = pbp_grouped.apply(lambda x: (x["EVENTMSGTYPE"] == 'SUBSTITUTION') & (x["PERSON1TYPE"] == 'HOME_PLAYER')).sum(level=0)
+        game_data["visitor_subs"] = pbp_grouped.apply(lambda x: (x["EVENTMSGTYPE"] == 'SUBSTITUTION') & (x["PERSON1TYPE"] == 'VISITOR_PLAYER')).groupby(level=0).sum()
+        game_data["home_subs"] = pbp_grouped.apply(lambda x: (x["EVENTMSGTYPE"] == 'SUBSTITUTION') & (x["PERSON1TYPE"] == 'HOME_PLAYER')).groupby(level=0).sum()
 
         #Timeout stats:
-        game_data["visitor_timeout"] = pbp_grouped.apply(lambda x: (x["EVENTMSGTYPE"] == 'TIMEOUT') & (x["PERSON1TYPE"] == 'VISITOR_TEAM')).sum(level=0)
-        game_data["home_timeout"] = pbp_grouped.apply(lambda x: (x["EVENTMSGTYPE"] == 'TIMEOUT') & (x["PERSON1TYPE"] == 'HOME_TEAM')).sum(level=0)
+        game_data["visitor_timeout"] = pbp_grouped.apply(lambda x: (x["EVENTMSGTYPE"] == 'TIMEOUT') & (x["PERSON1TYPE"] == 'VISITOR_TEAM')).groupby(level=0).sum()
+        game_data["home_timeout"] = pbp_grouped.apply(lambda x: (x["EVENTMSGTYPE"] == 'TIMEOUT') & (x["PERSON1TYPE"] == 'HOME_TEAM')).groupby(level=0).sum()
 
         #Jump ball stats:
-        game_data["visitor_jump_balls_won"] = pbp_grouped.apply(lambda x: (x["EVENTMSGTYPE"] == 'JUMP_BALL') & (x["PERSON3TYPE"] == 'VISITOR_PLAYER')).sum(level=0)
-        game_data["home_jump_balls_won"] = pbp_grouped.apply(lambda x: (x["EVENTMSGTYPE"] == 'JUMP_BALL') & (x["PERSON3TYPE"] == 'HOME_PLAYER')).sum(level=0)
+        game_data["visitor_jump_balls_won"] = pbp_grouped.apply(lambda x: (x["EVENTMSGTYPE"] == 'JUMP_BALL') & (x["PERSON3TYPE"] == 'VISITOR_PLAYER')).groupby(level=0).sum()
+        game_data["home_jump_balls_won"] = pbp_grouped.apply(lambda x: (x["EVENTMSGTYPE"] == 'JUMP_BALL') & (x["PERSON3TYPE"] == 'HOME_PLAYER')).groupby(level=0).sum()
         game_data["tip_off_winner"] = pbp_grouped.apply(lambda x: x[x["EVENTMSGTYPE"] == 'JUMP_BALL']["PERSON3TYPE"].iloc[0] if 'JUMP_BALL' in x["EVENTMSGTYPE"].unique() else "UNKNOWN")
 
         #Ejection stats:
         #Player on the court gets ejected
-        game_data["visitor_ejection"] = pbp_grouped.apply(lambda x: (x["EVENTMSGTYPE"] == 'EJECTION') & (x["PERSON1TYPE"] == 'VISITOR_PLAYER')).sum(level=0)
-        game_data["home_ejection"] = pbp_grouped.apply(lambda x: (x["EVENTMSGTYPE"] == 'EJECTION') & (x["PERSON1TYPE"] == 'HOME_PLAYER')).sum(level=0)
+        game_data["visitor_ejection"] = pbp_grouped.apply(lambda x: (x["EVENTMSGTYPE"] == 'EJECTION') & (x["PERSON1TYPE"] == 'VISITOR_PLAYER')).groupby(level=0).sum()
+        game_data["home_ejection"] = pbp_grouped.apply(lambda x: (x["EVENTMSGTYPE"] == 'EJECTION') & (x["PERSON1TYPE"] == 'HOME_PLAYER')).groupby(level=0).sum()
         #Non player gets ejected: coach etc.
-        game_data["visitor_team_ejection"] = pbp_grouped.apply(lambda x: (x["EVENTMSGTYPE"] == 'EJECTION') & (x["PERSON1TYPE"] == 'VISITOR_TEAM_FOUL')).sum(level=0)
-        game_data["home_team_ejection"] = pbp_grouped.apply(lambda x: (x["EVENTMSGTYPE"] == 'EJECTION') & (x["PERSON1TYPE"] == 'HOME_TEAM_FOUL')).sum(level=0)
+        game_data["visitor_team_ejection"] = pbp_grouped.apply(lambda x: (x["EVENTMSGTYPE"] == 'EJECTION') & (x["PERSON1TYPE"] == 'VISITOR_TEAM_FOUL')).groupby(level=0).sum()
+        game_data["home_team_ejection"] = pbp_grouped.apply(lambda x: (x["EVENTMSGTYPE"] == 'EJECTION') & (x["PERSON1TYPE"] == 'HOME_TEAM_FOUL')).groupby(level=0).sum()
 
         #Player performance:
         #Points of scoring leader
