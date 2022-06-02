@@ -218,11 +218,15 @@ def get_distance(df):
     df["home_shot_distance"] = df['HOMEDESCRIPTION'].str.extract("(\d{1,2}\')")
     df["visitor_shot_distance"] = df['VISITORDESCRIPTION'].str.extract("(\d{1,2}\')")
 
-    df['home_shot_distance'] = df['home_shot_distance'].str.replace('\'', '')
-    df['home_shot_distance'] = df['home_shot_distance'].fillna(-1).astype(int)
+    df['home_shot_distance'] = df['home_shot_distance'].str.replace('\'', '').astype(float)
+    #df['home_shot_distance'] = df['home_shot_distance'].fillna(-1).astype(int)
+    df.loc[(df["EVENTMSGTYPE"].str.startswith("FIELD_GOAL")) & (df["PERSON1TYPE"] == 'HOME_PLAYER') & (df['home_shot_distance'].isna()) & (df["HOMEDESCRIPTION"].str.contains("3PT ")), 'home_shot_distance'] = 23
+    df.loc[(df["EVENTMSGTYPE"].str.startswith("FIELD_GOAL")) & (df["PERSON1TYPE"] == 'HOME_PLAYER') & (df['home_shot_distance'].isna()), 'home_shot_distance'] = 0
 
-    df['visitor_shot_distance'] = df['visitor_shot_distance'].str.replace('\'', '')
-    df['visitor_shot_distance'] = df['visitor_shot_distance'].fillna(-1).astype(int)
+    df['visitor_shot_distance'] = df['visitor_shot_distance'].str.replace('\'', '').astype(float)
+    #df['visitor_shot_distance'] = df['visitor_shot_distance'].fillna(-1).astype(int)
+    df.loc[(df["EVENTMSGTYPE"].str.startswith("FIELD_GOAL")) & (df["PERSON1TYPE"] == 'VISITOR_PLAYER') & (df['visitor_shot_distance'].isna()) & (df["VISITORDESCRIPTION"].str.contains("3PT ")), 'visitor_shot_distance'] = 23
+    df.loc[(df["EVENTMSGTYPE"].str.startswith("FIELD_GOAL")) & (df["PERSON1TYPE"] == 'VISITOR_PLAYER') & (df['visitor_shot_distance'].isna()), 'visitor_shot_distance'] = 0
 
 
 def load_game_data(columns=None, seasons=None, path=RAW_DATA_PATH):
@@ -383,6 +387,11 @@ def load_game_data(columns=None, seasons=None, path=RAW_DATA_PATH):
             lambda x: x[x["EVENTMSGTYPE"] == 'FIELD_GOAL_MADE']["home_shot_distance"].min())
         game_data["visitor_made_min_shot_distance"] = pbp_grouped.apply(
             lambda x: x[x["EVENTMSGTYPE"] == 'FIELD_GOAL_MADE']["visitor_shot_distance"].min())
+
+        game_data["home_made_mean_shot_distance"] = pbp_grouped.apply(
+            lambda x: x[x["EVENTMSGTYPE"] == 'FIELD_GOAL_MADE']["home_shot_distance"].mean())
+        game_data["visitor_made_mean_shot_distance"] = pbp_grouped.apply(
+            lambda x: x[x["EVENTMSGTYPE"] == 'FIELD_GOAL_MADE']["visitor_shot_distance"].mean())
 
         #Calculate record after game for both teams (total number of wins and losses for the season):
         wins_dict = {team: 0 for team in set(game_data["visitor_team_id"].to_list() + game_data["home_team_id"].to_list())}
