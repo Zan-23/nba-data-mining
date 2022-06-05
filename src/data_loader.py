@@ -436,25 +436,25 @@ def load_player_data(columns=None, seasons=None, path=RAW_DATA_PATH, player_info
         player_data["fg_missed"] = player_data["fg_missed"].fillna(0).astype(int)
         player_data["3PT_made"] = pbp_grouped_pID1.apply(
             lambda x: ((x["EVENTMSGTYPE"] == 'FIELD_GOAL_MADE') & (x["PLAYER1_ID"] == x.name)) & (
-                        (x["VISITORDESCRIPTION"].str.contains("3PT").fillna(False)) | (
-                    x["HOMEDESCRIPTION"].str.contains("3PT").fillna(False)))).groupby(level=0).sum()
+                    (x["VISITORDESCRIPTION"].str.contains("3PT").fillna(False)) | (
+                x["HOMEDESCRIPTION"].str.contains("3PT").fillna(False)))).groupby(level=0).sum()
         player_data["3PT_made"] = player_data["3PT_made"].fillna(0).astype(int)
         player_data["3PT_missed"] = pbp_grouped_pID1.apply(
             lambda x: ((x["EVENTMSGTYPE"] == 'FIELD_GOAL_MISSED') & (x["PLAYER1_ID"] == x.name)) & (
-                        (x["VISITORDESCRIPTION"].str.contains("3PT").fillna(False)) | (
-                    x["HOMEDESCRIPTION"].str.contains("3PT").fillna(False)))).groupby(level=0).sum()
+                    (x["VISITORDESCRIPTION"].str.contains("3PT").fillna(False)) | (
+                x["HOMEDESCRIPTION"].str.contains("3PT").fillna(False)))).groupby(level=0).sum()
         player_data["3PT_missed"] = player_data["3PT_missed"].fillna(0).astype(int)
 
         # Free throw stats:
         player_data["ft_made"] = pbp_grouped_pID1.apply(
             lambda x: ((x["EVENTMSGTYPE"] == 'FREE_THROW') & (x["PLAYER1_ID"] == x.name)) & (~(
-                        (x["VISITORDESCRIPTION"].str.contains("MISS").fillna(False)) | (
-                    x["HOMEDESCRIPTION"].str.contains("MISS").fillna(False))))).groupby(level=0).sum()
+                    (x["VISITORDESCRIPTION"].str.contains("MISS").fillna(False)) | (
+                x["HOMEDESCRIPTION"].str.contains("MISS").fillna(False))))).groupby(level=0).sum()
         player_data["ft_made"] = player_data["ft_made"].fillna(0).astype(int)
         player_data["ft_missed"] = pbp_grouped_pID1.apply(
             lambda x: ((x["EVENTMSGTYPE"] == 'FREE_THROW') & (x["PLAYER1_ID"] == x.name)) & (
-                        (x["VISITORDESCRIPTION"].str.contains("MISS").fillna(False)) | (
-                    x["HOMEDESCRIPTION"].str.contains("MISS").fillna(False)))).groupby(level=0).sum()
+                    (x["VISITORDESCRIPTION"].str.contains("MISS").fillna(False)) | (
+                x["HOMEDESCRIPTION"].str.contains("MISS").fillna(False)))).groupby(level=0).sum()
         player_data["ft_missed"] = player_data["ft_missed"].fillna(0).astype(int)
 
         # Points scored:
@@ -479,6 +479,115 @@ def load_player_data(columns=None, seasons=None, path=RAW_DATA_PATH, player_info
         # Foul stats: (not just personal fouls)
         player_data["fouls"] = pbp_grouped_pID1.apply(
             lambda x: ((x["EVENTMSGTYPE"] == 'FOUL') & (x["PLAYER1_ID"] == x.name))).groupby(level=0).sum()
+        player_data["fouls"] = player_data["fouls"].fillna(0).astype(int)
+
+        player_data_per_season.append(player_data)
+        print(f"Calculated player data for the {pbp_data['season_name'][0]} season", end="\r")
+    return pd.concat(player_data_per_season).sort_values(
+        ["player_name", "season_name"]) if player_data_per_season else None
+
+
+def load_player_data_optimized(columns=None, seasons=None, path=RAW_DATA_PATH, player_info_path=PLAYER_INFO_PATH):
+    # TODO still have to finish optimization, then replace it, or add reading from preprocessed file
+    pbp_data_per_season = load_data(seasons=seasons, path=path, single_df=False)
+    print("Loaded PBP-data")
+    player_info = pd.read_csv(PLAYER_INFO_PATH, dtype={"Player ID": str})
+    print("Loaded player-info data")
+
+    player_data_per_season = []
+    for pbp_data in pbp_data_per_season:
+        # Filter fauly events
+        pbp_data = pbp_data[pbp_data["EVENTMSGTYPE"] != 18]
+        # Perform groupby only once
+        pbp_grouped_pID1 = pbp_data.groupby("PLAYER1_ID")
+        pbp_grouped_pID2 = pbp_data.groupby("PLAYER2_ID")
+        pbp_grouped_pID3 = pbp_data.groupby("PLAYER3_ID")
+
+        # Create row for each player involved in at least one play.
+        player_data = pd.DataFrame(index=set.union(*[
+            set(pbp_data[pbp_data[f"PERSON{i}TYPE"].isin(["HOME_PLAYER", "VISITOR_PLAYER"])][f"PLAYER{i}_ID"].unique())
+            for i in range(1, 4)]))
+
+        # Get player name:
+        player_data["season_name"] = pbp_data.iloc[0]["season_name"]
+        player_data["player_name1"] = pbp_grouped_pID1["PLAYER1_NAME"].first()
+        player_data["player_name2"] = pbp_grouped_pID2["PLAYER2_NAME"].first()
+        player_data["player_name3"] = pbp_grouped_pID3["PLAYER3_NAME"].first()
+        player_data['player_name'] = player_data[['player_name1', 'player_name2', 'player_name3']].fillna(
+            method='bfill', axis=1).iloc[:, 0]
+        player_data = player_data.drop(columns=['player_name1', 'player_name2', 'player_name3'])
+        # Removes ids for coaches getting ejections/fouls in 2017-18 season while being listed as player. (they dont have name)
+        player_data = player_data[player_data['player_name'].notna()]
+
+        # Add scraped player-info
+        player_data = player_data.merge(
+            player_info[player_info["Season"] == pbp_data.iloc[0]["season_name"]].set_index("Player ID")[
+                ["Age", "Height", "Weight", "College", "Country", "Draft Year", "Draft Number", "Draft Number"]],
+            left_index=True, right_index=True)
+
+        # Get games played:
+        player_deployed_per_game = pbp_data.groupby("GAME_ID").apply(lambda x: set.union(
+            *[set(x[x[f"PERSON{i}TYPE"].isin(["HOME_PLAYER", "VISITOR_PLAYER"])][f"PLAYER{i}_ID"].unique()) for i in
+              range(1, 4)]))
+        player_data["games_played"] = player_data.apply(
+            lambda x: len([game for game in player_deployed_per_game if x.name in game]), axis=1)
+        player_data["games_played"] = player_data["games_played"].fillna(0).astype(int)
+
+        # Field goal stats:
+        player_data["fg_made"] = pbp_grouped_pID1.apply(
+            lambda x: (x["EVENTMSGTYPE"] == 'FIELD_GOAL_MADE') & (x["PLAYER1_ID"] == x.name)).groupby(level=0).sum()
+        player_data["fg_made"] = player_data["fg_made"].fillna(0).astype(int)
+        player_data["fg_missed"] = pbp_grouped_pID1.apply(
+            lambda x: (x["EVENTMSGTYPE"] == 'FIELD_GOAL_MISSED') & (x["PLAYER1_ID"] == x.name)).groupby(level=0).sum()
+        player_data["fg_missed"] = player_data["fg_missed"].fillna(0).astype(int)
+        player_data["3PT_made"] = pbp_grouped_pID1.apply(
+            lambda x: ((x["EVENTMSGTYPE"] == 'FIELD_GOAL_MADE') & (x["PLAYER1_ID"] == x.name)) & (
+                    (x["VISITORDESCRIPTION"].str.contains("3PT").fillna(False)) | (
+                x["HOMEDESCRIPTION"].str.contains("3PT").fillna(False)))).groupby(level=0).sum()
+        player_data["3PT_made"] = player_data["3PT_made"].fillna(0).astype(int)
+        player_data["3PT_missed"] = pbp_grouped_pID1.apply(
+            lambda x: ((x["EVENTMSGTYPE"] == 'FIELD_GOAL_MISSED') & (x["PLAYER1_ID"] == x.name)) & (
+                    (x["VISITORDESCRIPTION"].str.contains("3PT").fillna(False)) | (
+                x["HOMEDESCRIPTION"].str.contains("3PT").fillna(False)))).groupby(level=0).sum()
+        player_data["3PT_missed"] = player_data["3PT_missed"].fillna(0).astype(int)
+
+        # Free throw stats:
+        # TODO why is only one negated?
+        mask_desc_miss = [(pbp_grouped_pID1["VISITORDESCRIPTION"].str.contains("MISS").fillna(False))
+                          | (pbp_grouped_pID1["HOMEDESCRIPTION"].str.contains("MISS").fillna(False))]
+        player_data["ft_made"] = pbp_grouped_pID1[(pbp_grouped_pID1["EVENTMSGTYPE"] == 'FREE_THROW') &
+                                                  (~mask_desc_miss)].groupby(level=0).sum()
+        player_data["ft_made"] = pbp_grouped_pID1.apply(
+            lambda x: ((x["EVENTMSGTYPE"] == 'FREE_THROW') & (x["PLAYER1_ID"] == x.name)) & (~(
+                    (x["VISITORDESCRIPTION"].str.contains("MISS").fillna(False)) | (
+                x["HOMEDESCRIPTION"].str.contains("MISS").fillna(False))))).groupby(level=0).sum()
+        player_data["ft_made"] = player_data["ft_made"].fillna(0).astype(int)
+
+        # event type has to be be free throw and
+        player_data["ft_missed"] = pbp_grouped_pID1[(pbp_grouped_pID1["EVENTMSGTYPE"] == 'FREE_THROW') &
+                                                    (mask_desc_miss)].groupby(level=0).sum()
+        player_data["ft_missed"] = player_data["ft_missed"].fillna(0).astype(int)
+
+        # Points scored:
+        player_data["points"] = 3 * player_data["3PT_made"] + 2 * (player_data["fg_made"] - player_data["3PT_made"]) + \
+                                player_data["ft_made"]
+
+        # Rebound stats:
+        player_data["rebounds"] = pbp_grouped_pID1[pbp_grouped_pID1["EVENTMSGTYPE"] == "REBOUND"].groupby(level=0).sum()
+        player_data["rebounds"] = player_data["rebounds"].fillna(0).astype(int)
+
+        # Assist stats:
+        player_data["assists"] = pbp_grouped_pID1[pbp_grouped_pID1["EVENTMSGTYPE"] == "FIELD_GOAL_MADE"].groupby(
+            level=0).sum()
+        player_data["assists"] = player_data["assists"].fillna(0).astype(int)
+
+        # Turnover stats:
+        player_data["turnover"] = pbp_grouped_pID1[pbp_grouped_pID1["EVENTMSGTYPE"] == "TURNOVER"].groupby(
+            level=0).sum()
+        player_data["turnover"] = player_data["turnover"].fillna(0).astype(int)
+
+        # Foul stats: (not just personal fouls)
+        player_data["fouls"] = pbp_grouped_pID1[(pbp_grouped_pID1["EVENTMSGTYPE"] == "FOUL")].groupby(level=0).sum()
         player_data["fouls"] = player_data["fouls"].fillna(0).astype(int)
 
         player_data_per_season.append(player_data)
