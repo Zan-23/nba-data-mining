@@ -218,11 +218,15 @@ def get_distance(df):
     df["home_shot_distance"] = df['HOMEDESCRIPTION'].str.extract("(\d{1,2}\')")
     df["visitor_shot_distance"] = df['VISITORDESCRIPTION'].str.extract("(\d{1,2}\')")
 
-    df['home_shot_distance'] = df['home_shot_distance'].str.replace('\'', '')
-    df['home_shot_distance'] = df['home_shot_distance'].fillna(-1).astype(int)
+    df['home_shot_distance'] = df['home_shot_distance'].str.replace('\'', '').astype(float)
+    #df['home_shot_distance'] = df['home_shot_distance'].fillna(-1).astype(int)
+    df.loc[(df["EVENTMSGTYPE"].str.startswith("FIELD_GOAL")) & (df["PERSON1TYPE"] == 'HOME_PLAYER') & (df['home_shot_distance'].isna()) & (df["HOMEDESCRIPTION"].str.contains("3PT ")), 'home_shot_distance'] = 23
+    df.loc[(df["EVENTMSGTYPE"].str.startswith("FIELD_GOAL")) & (df["PERSON1TYPE"] == 'HOME_PLAYER') & (df['home_shot_distance'].isna()), 'home_shot_distance'] = 0
 
-    df['visitor_shot_distance'] = df['visitor_shot_distance'].str.replace('\'', '')
-    df['visitor_shot_distance'] = df['visitor_shot_distance'].fillna(-1).astype(int)
+    df['visitor_shot_distance'] = df['visitor_shot_distance'].str.replace('\'', '').astype(float)
+    #df['visitor_shot_distance'] = df['visitor_shot_distance'].fillna(-1).astype(int)
+    df.loc[(df["EVENTMSGTYPE"].str.startswith("FIELD_GOAL")) & (df["PERSON1TYPE"] == 'VISITOR_PLAYER') & (df['visitor_shot_distance'].isna()) & (df["VISITORDESCRIPTION"].str.contains("3PT ")), 'visitor_shot_distance'] = 23
+    df.loc[(df["EVENTMSGTYPE"].str.startswith("FIELD_GOAL")) & (df["PERSON1TYPE"] == 'VISITOR_PLAYER') & (df['visitor_shot_distance'].isna()), 'visitor_shot_distance'] = 0
 
 
 def load_game_data(columns=None, seasons=None, path=RAW_DATA_PATH):
@@ -242,25 +246,30 @@ def load_game_data(columns=None, seasons=None, path=RAW_DATA_PATH):
         game_data["season_name"] = pbp_grouped["season_name"].first()
         # Get date and start/end time would be nice.
 
-        # Home team:
+        # Visitor team:
         game_data["visitor_team_id"] = pbp_grouped.apply(
             lambda x: x[x["PERSON1TYPE"] == 'VISITOR_PLAYER']["PLAYER1_TEAM_ID"].iloc[0])
         game_data["visitor_team_city"] = pbp_grouped.apply(
             lambda x: x[x["PERSON1TYPE"] == 'VISITOR_PLAYER']["PLAYER1_TEAM_CITY"].iloc[0])
         game_data["visitor_team_nickname"] = pbp_grouped.apply(
             lambda x: x[x["PERSON1TYPE"] == 'VISITOR_PLAYER']["PLAYER1_TEAM_NICKNAME"].iloc[0])
+        game_data["visitor_record_wins"] = 0
+        game_data["visitor_record_losses"] = 0
         # Score:
         game_data[["visitor_final_score", "home_final_score"]] = pbp_grouped.apply(
             lambda x: x[~x["SCORE"].isna()]["SCORE"].str.split(" - ", expand=True).astype(
                 int).max())  # Complicated because in ca. 5 games the score column is messed up and out of order.
         game_data["home_win"] = game_data["visitor_final_score"] < game_data["home_final_score"]
-        # Visitor team:
+        # Home team:
         game_data["home_team_id"] = pbp_grouped.apply(
             lambda x: x[x["PERSON1TYPE"] == 'HOME_PLAYER']["PLAYER1_TEAM_ID"].iloc[0])
         game_data["home_team_city"] = pbp_grouped.apply(
             lambda x: x[x["PERSON1TYPE"] == 'HOME_PLAYER']["PLAYER1_TEAM_CITY"].iloc[0])
         game_data["home_team_nickname"] = pbp_grouped.apply(
             lambda x: x[x["PERSON1TYPE"] == 'HOME_PLAYER']["PLAYER1_TEAM_NICKNAME"].iloc[0])
+        # Calculated later
+        game_data["home_record_wins"] = 0
+        game_data["home_record_losses"] = 0
 
         # Number of periods played: >4 is overtime
         game_data["periods"] = pbp_grouped["PERIOD"].max()
@@ -378,6 +387,27 @@ def load_game_data(columns=None, seasons=None, path=RAW_DATA_PATH):
             lambda x: x[x["EVENTMSGTYPE"] == 'FIELD_GOAL_MADE']["home_shot_distance"].min())
         game_data["visitor_made_min_shot_distance"] = pbp_grouped.apply(
             lambda x: x[x["EVENTMSGTYPE"] == 'FIELD_GOAL_MADE']["visitor_shot_distance"].min())
+
+        game_data["home_made_mean_shot_distance"] = pbp_grouped.apply(
+            lambda x: x[x["EVENTMSGTYPE"] == 'FIELD_GOAL_MADE']["home_shot_distance"].mean())
+        game_data["visitor_made_mean_shot_distance"] = pbp_grouped.apply(
+            lambda x: x[x["EVENTMSGTYPE"] == 'FIELD_GOAL_MADE']["visitor_shot_distance"].mean())
+
+        #Calculate record after game for both teams (total number of wins and losses for the season):
+        wins_dict = {team: 0 for team in set(game_data["visitor_team_id"].to_list() + game_data["home_team_id"].to_list())}
+        losses_dict = wins_dict.copy()
+        for i, row in game_data.iterrows():
+            if row["home_win"]:
+                wins_dict[row["home_team_id"]] += 1
+                losses_dict[row["visitor_team_id"]] += 1
+            else:
+                wins_dict[row["visitor_team_id"]] += 1
+                losses_dict[row["home_team_id"]] += 1
+            game_data.at[i,"home_record_wins"] = wins_dict[row["home_team_id"]]
+            game_data.at[i,"home_record_losses"] = losses_dict[row["home_team_id"]]
+            game_data.at[i,"visitor_record_wins"] = wins_dict[row["visitor_team_id"]]
+            game_data.at[i,"visitor_record_losses"] = losses_dict[row["visitor_team_id"]]
+
         game_data_per_season.append(game_data)
         print(f"Calculated game data for the {pbp_data['season_name'][0]} season", end="\r")
 
