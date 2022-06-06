@@ -298,7 +298,7 @@ def load_game_data(columns=None, seasons=None, path=RAW_DATA_PATH):
         game_data["visitor_ft_missed"] = pbp_grouped.apply(lambda x: (x["EVENTMSGTYPE"] == 'FREE_THROW') & (x["PERSON1TYPE"] == 'VISITOR_PLAYER') & (x["VISITORDESCRIPTION"].str.contains("MISS"))).groupby(level=0).sum()
         game_data["home_ft_made"] = pbp_grouped.apply(lambda x: (x["EVENTMSGTYPE"] == 'FREE_THROW') & (x["PERSON1TYPE"] == 'HOME_PLAYER') & (x["HOMEDESCRIPTION"].str.contains("MISS") == False)).groupby(level=0).sum()
         game_data["home_ft_missed"] = pbp_grouped.apply(lambda x: (x["EVENTMSGTYPE"] == 'FREE_THROW') & (x["PERSON1TYPE"] == 'HOME_PLAYER') & (x["HOMEDESCRIPTION"].str.contains("MISS"))).groupby(level=0).sum()
-        
+
         #Rebound stats:
         #Player rebounds the ball in live game
         game_data["visitor_rebound"] = pbp_grouped.apply(lambda x: (x["EVENTMSGTYPE"] == 'REBOUND') & (x["PERSON1TYPE"] == 'VISITOR_PLAYER') & (x["EVENTMSGACTIONTYPE"] == "live")).groupby(level=0).sum()
@@ -629,9 +629,25 @@ def load_player_data_optimized(columns=None, seasons=None, path=RAW_DATA_PATH, p
         ["player_name", "season_name"]) if player_data_per_season else None
 
 
-def player_data_preprocessing(player_df, remove_nan_rows=False):
+def player_data_preprocessing():
     """
-    Preprocesses the player data.
+    Preprocess player data for further analysis.
+    :return:
+    """
+    # player_info = pd.read_csv("./../../data/raw/player-data/player_info.csv")
+    # lineups = pd.read_csv("./../../data/processed/lineups-all-seasons.csv")
+    # temp_lineups = deepcopy(lineups_df)
+    player_df = load_player_data()
+    player_df = player_data_convert_to_metric_units(player_df)
+    lineups = load_lineups()
+    player_df = add_extra_player_features_gregor(player_df, lineups)
+
+    return player_df
+
+
+def player_data_convert_to_metric_units(player_df, remove_nan_rows=False):
+    """
+    Converts  mainly it converts from pounds to kg and from feet/inches to cm.
 
     :param player_df: Dataframe with player data.
     :param remove_nan_rows: Boolean. If True, rows with NaN values are removed.
@@ -659,3 +675,37 @@ def player_data_preprocessing(player_df, remove_nan_rows=False):
 
     return preprocessed_df
 
+
+def add_extra_player_features_gregor(player_df, lineups_df):
+    """
+    Adds extra features to the player data. (TODO @gregor add extra info)
+
+    :param player_df:
+    :param lineups_df:
+    :return:
+    """
+    temp_lineups = pd.DataFrame()
+    temp_player_df = deepcopy(player_df)
+
+    # Add season string to every lineup row
+    temp_lineups["season"] = lineups_df["game_id"].astype(str).str[1:3].apply(lambda x: f"20{x}-20{int(x) + 1:02d}")
+
+    # This can be optimized if needed
+    temp_player_df["games_started"] = temp_player_df.apply(lambda x:
+                 (temp_lineups[(temp_lineups["season"] == x["Season"]) & (
+                 (temp_lineups["home_player1_id"] == x["Player ID"]) |
+                 (temp_lineups["home_player2_id"] == x["Player ID"]) |
+                 (temp_lineups["home_player3_id"] == x["Player ID"]) |
+                 (temp_lineups["home_player4_id"] == x["Player ID"]) |
+                 (temp_lineups["home_player5_id"] == x["Player ID"]) |
+                 (temp_lineups["visitor_player1_id"] == x["Player ID"]) |
+                 (temp_lineups["visitor_player2_id"] == x["Player ID"]) |
+                 (temp_lineups["visitor_player3_id"] == x["Player ID"]) |
+                 (temp_lineups["visitor_player4_id"] == x["Player ID"]) |
+                 (temp_lineups["visitor_player5_id"] == x["Player ID"]))]["game_id"].count()), axis=1)
+    return temp_player_df
+
+
+def load_lineups():
+    # TODO @gregor do this
+    pass
