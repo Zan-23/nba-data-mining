@@ -1,3 +1,6 @@
+from copy import deepcopy
+
+import numpy as np
 import pandas as pd
 from pathlib import Path
 
@@ -624,3 +627,35 @@ def load_player_data_optimized(columns=None, seasons=None, path=RAW_DATA_PATH, p
         print(f"Calculated player data for the {pbp_data['season_name'][0]} season", end="\r")
     return pd.concat(player_data_per_season).sort_values(
         ["player_name", "season_name"]) if player_data_per_season else None
+
+
+def player_data_preprocessing(player_df, remove_nan_rows=False):
+    """
+    Preprocesses the player data.
+
+    :param player_df: Dataframe with player data.
+    :param remove_nan_rows: Boolean. If True, rows with NaN values are removed.
+    :return: A modified dataframe with player data standardized to kg and cm.
+    """
+    pounds_to_kg_ratio = 0.45359237
+    feet_to_cm_ratio = 30.48
+    inches_to_cm_ratio = 2.54
+
+    preprocessed_df = deepcopy(player_df)
+    #  pounds to kg
+    preprocessed_df["Weight"] = preprocessed_df["Weight"].replace("-", np.nan)
+    preprocessed_df["Weight"] = (preprocessed_df["Weight"].astype(float) * pounds_to_kg_ratio).astype(float)
+
+    # feet to cm
+    split_data = preprocessed_df["Height"].str.split('-').apply(pd.Series).replace("", np.nan).astype(float)
+    preprocessed_df["Height"] = (split_data[0] * feet_to_cm_ratio + split_data[1] * inches_to_cm_ratio).astype(float)
+
+    if remove_nan_rows:
+        # remove rows where height or data is zero since it skews the result
+        tmp_len = len(preprocessed_df.index)
+
+        preprocessed_df = preprocessed_df[(preprocessed_df["Height"] != np.nan) | (preprocessed_df["Weight"] != np.nan)]
+        print(f"Removed {tmp_len - len(player_df.index)} rows with 0/nan values!")
+
+    return preprocessed_df
+
