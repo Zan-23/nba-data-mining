@@ -98,7 +98,7 @@ def get_player_info_season_urls():
 
     url_arr = []
     # get all urls from 2000 to 2019
-    for i in range(2000, 2020):
+    for i in range(2000, 2019):
         season = f"{i}-{str(i+1)[2:]}"
         url = f"{BASE_NBA_URL}?Season={season}&SeasonType=Regular%20Season&PerMode=Totals"
         url_arr.append((season, url))

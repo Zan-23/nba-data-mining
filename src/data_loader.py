@@ -639,8 +639,8 @@ def player_data_preprocessing():
     # temp_lineups = deepcopy(lineups_df)
     player_df = load_player_data()
     player_df = player_data_convert_to_metric_units(player_df)
-    lineups = load_lineups()
-    player_df = add_extra_player_features_gregor(player_df, lineups)
+    # lineups = load_lineups()
+    # player_df = add_extra_player_features_gregor(player_df, lineups)
 
     return player_df
 
