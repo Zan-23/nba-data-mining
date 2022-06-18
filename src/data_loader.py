@@ -53,7 +53,7 @@ def load_data(columns=None, seasons=None, path=RAW_DATA_PATH, resolve=True, sing
             # Only read specified seasons:
             if seasons and (file_name.stem[:7] not in seasons):
                 continue
-            season = pd.read_csv(file_name, usecols=columns, dtype=LOAD_DATA_COL_TYPES)
+            season = pd.read_csv(file_name, usecols=columns)
 
             season["season_name"] = file_name.stem[:7]
             if resolve:
