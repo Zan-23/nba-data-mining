@@ -11,3 +11,8 @@ This is how you set up your environment with anaconda:
 The data with which we will work with is available on this [website](https://eightthirtyfour.com/data).
 A script to download the data is already created and you can download the data 
 with the following command: `python src/data/data_downloader.py`
+
+## Data sites 
+Site where we could get game dates:
+- https://www.nba.com/stats/players/boxscores/?Sorter=FANTASY_PTS&Direction=DESC&sort=gdate&dir=1&Season=2008-09&SeasonType=Regular%20Season
+- 
