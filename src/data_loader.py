@@ -84,7 +84,8 @@ def load_data(columns=None, seasons=None, path=RAW_DATA_PATH, resolve=True, sing
             # modifies dataframe in place
             get_distance(season)
             # modifies type in place to be a category
-            season[CATEGORIES_COLS_ARR] = season[CATEGORIES_COLS_ARR].astype("category")
+            # TODO comment it out if you want to use categories
+            # season[CATEGORIES_COLS_ARR] = season[CATEGORIES_COLS_ARR].astype("category")
             seasons_df_arr.append(season)
 
         if len(seasons_df_arr) == 0:
@@ -96,7 +97,8 @@ def load_data(columns=None, seasons=None, path=RAW_DATA_PATH, resolve=True, sing
 
         if single_df:
             concat_df = pd.concat(seasons_df_arr).reset_index(drop=True)
-            concat_df[CATEGORIES_COLS_ARR] = concat_df[CATEGORIES_COLS_ARR].astype("category")
+            # TODO comment it out if you want to use categories
+            # concat_df[CATEGORIES_COLS_ARR] = concat_df[CATEGORIES_COLS_ARR].astype("category")
             return concat_df
         else:
             return seasons_df_arr
