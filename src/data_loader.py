@@ -26,7 +26,6 @@ def load_data(columns=None, seasons=None, path=RAW_DATA_PATH, resolve=True, sing
     exists.
     :return:
     """
-    # TODO - check could be added if the sequence of the actions matches timestamps
     E_ACT_TYPE_STR = "EVENTMSGACTIONTYPE"
     E_TYPE_STR = "EVENTMSGTYPE"
     P_TYPE_STR_LIST = [f"PERSON{i}TYPE" for i in [1, 2, 3]]  # For Person3 there seem to be some random 1 : Timeout
