@@ -297,44 +297,44 @@ def load_game_data(columns=None, seasons=None, path=RAW_DATA_PATH, force_recompu
             game_data["home_team_ejection"] = pbp_grouped.apply(
                 lambda x: (x["EVENTMSGTYPE"] == 'EJECTION') & (x["PERSON1TYPE"] == 'HOME_TEAM_FOUL')).groupby(level=0).sum()
 
-        # Player performance:
-        # Points of scoring leader
-        game_data["home_scoring_leader"] = pbp_grouped.apply(lambda x: (
-            (x[(x["EVENTMSGTYPE"] == 'FIELD_GOAL_MADE') & (x["HOMEDESCRIPTION"].str.contains('3PT')) & (
-                    x["PERSON1TYPE"] == 'HOME_PLAYER')].groupby("PLAYER1_ID").size() * 3).add(
-                x[(x["EVENTMSGTYPE"] == 'FIELD_GOAL_MADE') & ((x["HOMEDESCRIPTION"].str.contains('3PT')) == False) & (
-                        x["PERSON1TYPE"] == 'HOME_PLAYER')].groupby("PLAYER1_ID").size() * 2, fill_value=0).add(
-                x[(x["EVENTMSGTYPE"] == 'FREE_THROW') & ((x["HOMEDESCRIPTION"].str.contains('MISS')) == False) & (
-                        x["PERSON1TYPE"] == 'HOME_PLAYER')].groupby("PLAYER1_ID").size(), fill_value=0)
-        ).idxmax())
-        game_data["home_scoring_leader_points"] = pbp_grouped.apply(lambda x: (
-            (x[(x["EVENTMSGTYPE"] == 'FIELD_GOAL_MADE') & (x["HOMEDESCRIPTION"].str.contains('3PT')) & (
-                    x["PERSON1TYPE"] == 'HOME_PLAYER')].groupby("PLAYER1_ID").size() * 3).add(
-                x[(x["EVENTMSGTYPE"] == 'FIELD_GOAL_MADE') & ((x["HOMEDESCRIPTION"].str.contains('3PT')) == False) & (
-                        x["PERSON1TYPE"] == 'HOME_PLAYER')].groupby("PLAYER1_ID").size() * 2, fill_value=0).add(
-                x[(x["EVENTMSGTYPE"] == 'FREE_THROW') & ((x["HOMEDESCRIPTION"].str.contains('MISS')) == False) & (
-                        x["PERSON1TYPE"] == 'HOME_PLAYER')].groupby("PLAYER1_ID").size(), fill_value=0)
-        ).max())
-        game_data["visitor_scoring_leader"] = pbp_grouped.apply(lambda x: (
-            (x[(x["EVENTMSGTYPE"] == 'FIELD_GOAL_MADE') & (x["VISITORDESCRIPTION"].str.contains('3PT')) & (
-                    x["PERSON1TYPE"] == 'VISITOR_PLAYER')].groupby("PLAYER1_ID").size() * 3).add(
-                x[(x["EVENTMSGTYPE"] == 'FIELD_GOAL_MADE') & (
-                        (x["VISITORDESCRIPTION"].str.contains('3PT')) == False) & (
-                          x["PERSON1TYPE"] == 'VISITOR_PLAYER')].groupby("PLAYER1_ID").size() * 2,
-                fill_value=0).add(
-                x[(x["EVENTMSGTYPE"] == 'FREE_THROW') & ((x["VISITORDESCRIPTION"].str.contains('MISS')) == False) & (
-                        x["PERSON1TYPE"] == 'VISITOR_PLAYER')].groupby("PLAYER1_ID").size(), fill_value=0)
-        ).idxmax())
-        game_data["visitor_scoring_leader_points"] = pbp_grouped.apply(lambda x: (
-            (x[(x["EVENTMSGTYPE"] == 'FIELD_GOAL_MADE') & (x["VISITORDESCRIPTION"].str.contains('3PT')) & (
-                    x["PERSON1TYPE"] == 'VISITOR_PLAYER')].groupby("PLAYER1_ID").size() * 3).add(
-                x[(x["EVENTMSGTYPE"] == 'FIELD_GOAL_MADE') & (
-                        (x["VISITORDESCRIPTION"].str.contains('3PT')) == False) & (
-                          x["PERSON1TYPE"] == 'VISITOR_PLAYER')].groupby("PLAYER1_ID").size() * 2,
-                fill_value=0).add(
-                x[(x["EVENTMSGTYPE"] == 'FREE_THROW') & ((x["VISITORDESCRIPTION"].str.contains('MISS')) == False) & (
-                        x["PERSON1TYPE"] == 'VISITOR_PLAYER')].groupby("PLAYER1_ID").size(), fill_value=0)
-        ).max())
+            # Player performance:
+            # Points of scoring leader
+            game_data["home_scoring_leader"] = pbp_grouped.apply(lambda x: (
+                (x[(x["EVENTMSGTYPE"] == 'FIELD_GOAL_MADE') & (x["HOMEDESCRIPTION"].str.contains('3PT')) & (
+                        x["PERSON1TYPE"] == 'HOME_PLAYER')].groupby("PLAYER1_ID").size() * 3).add(
+                    x[(x["EVENTMSGTYPE"] == 'FIELD_GOAL_MADE') & ((x["HOMEDESCRIPTION"].str.contains('3PT')) == False) & (
+                            x["PERSON1TYPE"] == 'HOME_PLAYER')].groupby("PLAYER1_ID").size() * 2, fill_value=0).add(
+                    x[(x["EVENTMSGTYPE"] == 'FREE_THROW') & ((x["HOMEDESCRIPTION"].str.contains('MISS')) == False) & (
+                            x["PERSON1TYPE"] == 'HOME_PLAYER')].groupby("PLAYER1_ID").size(), fill_value=0)
+            ).idxmax())
+            game_data["home_scoring_leader_points"] = pbp_grouped.apply(lambda x: (
+                (x[(x["EVENTMSGTYPE"] == 'FIELD_GOAL_MADE') & (x["HOMEDESCRIPTION"].str.contains('3PT')) & (
+                        x["PERSON1TYPE"] == 'HOME_PLAYER')].groupby("PLAYER1_ID").size() * 3).add(
+                    x[(x["EVENTMSGTYPE"] == 'FIELD_GOAL_MADE') & ((x["HOMEDESCRIPTION"].str.contains('3PT')) == False) & (
+                            x["PERSON1TYPE"] == 'HOME_PLAYER')].groupby("PLAYER1_ID").size() * 2, fill_value=0).add(
+                    x[(x["EVENTMSGTYPE"] == 'FREE_THROW') & ((x["HOMEDESCRIPTION"].str.contains('MISS')) == False) & (
+                            x["PERSON1TYPE"] == 'HOME_PLAYER')].groupby("PLAYER1_ID").size(), fill_value=0)
+            ).max())
+            game_data["visitor_scoring_leader"] = pbp_grouped.apply(lambda x: (
+                (x[(x["EVENTMSGTYPE"] == 'FIELD_GOAL_MADE') & (x["VISITORDESCRIPTION"].str.contains('3PT')) & (
+                        x["PERSON1TYPE"] == 'VISITOR_PLAYER')].groupby("PLAYER1_ID").size() * 3).add(
+                    x[(x["EVENTMSGTYPE"] == 'FIELD_GOAL_MADE') & (
+                            (x["VISITORDESCRIPTION"].str.contains('3PT')) == False) & (
+                              x["PERSON1TYPE"] == 'VISITOR_PLAYER')].groupby("PLAYER1_ID").size() * 2,
+                    fill_value=0).add(
+                    x[(x["EVENTMSGTYPE"] == 'FREE_THROW') & ((x["VISITORDESCRIPTION"].str.contains('MISS')) == False) & (
+                            x["PERSON1TYPE"] == 'VISITOR_PLAYER')].groupby("PLAYER1_ID").size(), fill_value=0)
+            ).idxmax())
+            game_data["visitor_scoring_leader_points"] = pbp_grouped.apply(lambda x: (
+                (x[(x["EVENTMSGTYPE"] == 'FIELD_GOAL_MADE') & (x["VISITORDESCRIPTION"].str.contains('3PT')) & (
+                        x["PERSON1TYPE"] == 'VISITOR_PLAYER')].groupby("PLAYER1_ID").size() * 3).add(
+                    x[(x["EVENTMSGTYPE"] == 'FIELD_GOAL_MADE') & (
+                            (x["VISITORDESCRIPTION"].str.contains('3PT')) == False) & (
+                              x["PERSON1TYPE"] == 'VISITOR_PLAYER')].groupby("PLAYER1_ID").size() * 2,
+                    fill_value=0).add(
+                    x[(x["EVENTMSGTYPE"] == 'FREE_THROW') & ((x["VISITORDESCRIPTION"].str.contains('MISS')) == False) & (
+                            x["PERSON1TYPE"] == 'VISITOR_PLAYER')].groupby("PLAYER1_ID").size(), fill_value=0)
+            ).max())
 
             # Shooting Distance information
             # Max and min distance
