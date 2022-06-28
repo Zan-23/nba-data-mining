@@ -411,7 +411,7 @@ def load_game_data_zan(columns=None, seasons=None, path=RAW_DATA_PATH, force_rec
     GAME_ID_STR = "GAME_ID"
     data_columns = ["play_count", "home_team_id", "visitor_team_id", "home_record_wins", "home_record_losses"]
     dir_path = os.path.dirname(os.path.realpath(__file__))
-    games_data_file = os.path.join(dir_path, "./../data/processed/load_data_games_arr_v2_zan.pkl")
+    games_data_file = os.path.join(dir_path, "../data/processed/load_data_games_arr_v2_zan.pkl")
 
     # reading from file or recomputing depending on the flags
     if not force_recompute and os.path.exists(games_data_file):
@@ -451,7 +451,7 @@ def load_game_data_zan(columns=None, seasons=None, path=RAW_DATA_PATH, force_rec
                 visit_player_df = pbp_grouped[person1_visitor_mask]
                 games_df.at[game_id, "visitor_team_id"] = visit_player_df["PLAYER1_TEAM_ID"].iloc[0].astype(int)
                 games_df.at[game_id, "visitor_team_city"] = visit_player_df["PLAYER1_TEAM_CITY"].iloc[0]
-                games_df.at[game_id, "visitor_team_nickname"] = visit_player_df["PLAYER1_TEAM_CITY"].iloc[0]
+                games_df.at[game_id, "visitor_team_nickname"] = visit_player_df["PLAYER1_TEAM_NICKNAME"].iloc[0]
 
                 # Score:
                 # Complicated because in ca. 5 games the score column is messed up and out of order.
@@ -459,8 +459,8 @@ def load_game_data_zan(columns=None, seasons=None, path=RAW_DATA_PATH, force_rec
                     int).max()
 
                 # TODO is this with the indexes ok?
-                games_df.at[game_id, "home_final_score"] = final_score[0]
-                games_df.at[game_id, "visitor_final_score"] = final_score[1]
+                games_df.at[game_id, "home_final_score"] = final_score[1]
+                games_df.at[game_id, "visitor_final_score"] = final_score[0]
                 games_df.at[game_id, "home_win"] = games_df.at[game_id, "visitor_final_score"] < games_df.at[
                     game_id, "home_final_score"]
 
@@ -477,18 +477,15 @@ def load_game_data_zan(columns=None, seasons=None, path=RAW_DATA_PATH, force_rec
                 games_df.at[game_id, "minutes_played"] = 48 + (games_df.at[game_id, "periods"] - 4) * 2.5
 
                 # Players deployed
-                games_df.at[game_id, "visitor_players_deployed"] = pbp_grouped[person1_visitor_mask
-                                                                               | (pbp_grouped[
-                                                                                      "PERSON2TYPE"] == "VISITOR_PLAYER")
-                                                                               | (pbp_grouped[
-                                                                                      "PERSON3TYPE"] == "VISITOR_PLAYER")
-                                                                               ]["PLAYER1_ID"].unique().size
-                games_df.at[game_id, "home_players_deployed"] = pbp_grouped[person1_home_mask
-                                                                            | (pbp_grouped[
-                                                                                   "PERSON2TYPE"] == "HOME_PLAYER")
-                                                                            | (pbp_grouped[
-                                                                                   "PERSON3TYPE"] == "HOME_PLAYER")
-                                                                            ]["PLAYER1_ID"].unique().size
+                games_df.at[game_id, "visitor_players_deployed"] = len(set(
+                    pbp_grouped[person1_visitor_mask]["PLAYER1_ID"].unique())
+                        .union(pbp_grouped[pbp_grouped["PERSON2TYPE"] == "VISITOR_PLAYER"]["PLAYER2_ID"].unique())\
+                        .union(pbp_grouped[pbp_grouped["PERSON3TYPE"] == "VISITOR_PLAYER"]["PLAYER3_ID"].unique()))
+
+                games_df.at[game_id, "home_players_deployed"] = len(set(
+                    pbp_grouped[person1_home_mask]["PLAYER1_ID"].unique())
+                        .union(pbp_grouped[pbp_grouped["PERSON2TYPE"] == "HOME_PLAYER"]["PLAYER2_ID"].unique())\
+                        .union(pbp_grouped[pbp_grouped["PERSON3TYPE"] == "HOME_PLAYER"]["PLAYER3_ID"].unique()))
 
                 # Used masks
                 f_goal_made_m = pbp_grouped["EVENTMSGTYPE"] == "FIELD_GOAL_MADE"
@@ -546,7 +543,8 @@ def load_game_data_zan(columns=None, seasons=None, path=RAW_DATA_PATH, force_rec
                     pbp_grouped[rebound_mask & person1_home_mask & (pbp_grouped["EVENTMSGACTIONTYPE"] == "live")].index)
 
                 # Team gets the ball if out of bounds
-                games_df.at[game_id, "visitor_team_rebound"] = len(pbp_grouped[rebound_mask & person1_visitor_mask
+                games_df.at[game_id, "visitor_team_rebound"] = len(pbp_grouped[rebound_mask
+                                                                               & (pbp_grouped["PERSON1TYPE"] == "VISITOR_TEAM")
                                                                                & (pbp_grouped[
                                                                                       "EVENTMSGACTIONTYPE"] == "live")].index)
                 # TODO this one is weird it has "HOME_TEAM" instead of "HOME_PLAYER"
@@ -669,8 +667,8 @@ def load_game_data_zan(columns=None, seasons=None, path=RAW_DATA_PATH, force_rec
                     losses_dict[games_df.at[game_id, "home_team_id"]] += 1
                 games_df.at[game_id, "home_record_wins"] = wins_dict[games_df.at[game_id, "home_team_id"]]
                 games_df.at[game_id, "home_record_losses"] = losses_dict[games_df.at[game_id, "home_team_id"]]
-                games_df.at[game_id, "visitor_record_wins"] = wins_dict[games_df.at[game_id, "home_team_id"]]
-                games_df.at[game_id, "visitor_record_losses"] = losses_dict[games_df.at[game_id, "home_team_id"]]
+                games_df.at[game_id, "visitor_record_wins"] = wins_dict[games_df.at[game_id, "visitor_team_id"]]
+                games_df.at[game_id, "visitor_record_losses"] = losses_dict[games_df.at[game_id, "visitor_team_id"]]
 
             print(f"Calculated game data for the {pbp_data['season_name'][0]} season")
 
@@ -694,7 +692,7 @@ def load_game_data_zan(columns=None, seasons=None, path=RAW_DATA_PATH, force_rec
                            "visitor_scoring_leader", "visitor_scoring_leader_points",
                            "home_made_max_shot_distance", "visitor_made_max_shot_distance",
                            "home_made_min_shot_distance", "visitor_made_min_shot_distance",
-                           "visitor_record_wins", "visitor_record_losses"]
+                           "visitor_record_losses"]
 
             games_df[int_columns] = games_df[int_columns].astype(int)
             # saving seasons arr to file, can be recomputed as single df
