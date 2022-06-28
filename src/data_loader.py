@@ -696,7 +696,7 @@ def load_game_data_zan(columns=None, seasons=None, path=RAW_DATA_PATH, force_rec
                            "home_made_min_shot_distance", "visitor_made_min_shot_distance",
                            "visitor_record_wins", "visitor_record_losses"]
 
-            games_df = games_df[int_columns].astype(int)
+            games_df[int_columns] = games_df[int_columns].astype(int)
             # saving seasons arr to file, can be recomputed as single df
             print("Saving to file ...")
             with open(games_data_file, "wb") as file:
