@@ -408,19 +408,23 @@ def load_game_data_zan(columns=None, seasons=None, path=RAW_DATA_PATH, force_rec
     :param force_recompute:
     :return:
     """
+    print("Function called")
     GAME_ID_STR = "GAME_ID"
     data_columns = ["play_count", "home_team_id", "visitor_team_id", "home_record_wins", "home_record_losses"]
     dir_path = os.path.dirname(os.path.realpath(__file__))
     games_data_file = os.path.join(dir_path, "../data/processed/load_data_games_arr_v2_zan.pkl")
+    common_lineups = pd.read_pickle("../data/processed/common_lineups.pkl")
 
     # reading from file or recomputing depending on the flags
     if not force_recompute and os.path.exists(games_data_file):
+        print("IF")
         print(f"Loading data from file {games_data_file} ...")
         with open(games_data_file, "rb") as file:
             game_data_df = pickle.load(file)
         print("Data loaded!")
         return game_data_df
     else:
+        print("ELSE")
         pbp_data_per_season = load_data(seasons=seasons, path=path, single_df=False, force_recompute=False)
         print("Loaded PBP-data")
 
@@ -672,6 +676,9 @@ def load_game_data_zan(columns=None, seasons=None, path=RAW_DATA_PATH, force_rec
 
             print(f"Calculated game data for the {pbp_data['season_name'][0]} season")
 
+        print("Concatenating common lineups")
+        games_df = games_df.concat([games_df, common_lineups], axis=1)
+
         if len(games_df.index) < 1:
             raise Exception("Game data is non-existent! Check for bugs")
         else:
@@ -692,7 +699,7 @@ def load_game_data_zan(columns=None, seasons=None, path=RAW_DATA_PATH, force_rec
                            "visitor_scoring_leader", "visitor_scoring_leader_points",
                            "home_made_max_shot_distance", "visitor_made_max_shot_distance",
                            "home_made_min_shot_distance", "visitor_made_min_shot_distance",
-                           "visitor_record_losses"]
+                           "visitor_record_losses", "home_common_lineup", "visitor_common_lineup"]
 
             games_df[int_columns] = games_df[int_columns].astype(int)
             # saving seasons arr to file, can be recomputed as single df
