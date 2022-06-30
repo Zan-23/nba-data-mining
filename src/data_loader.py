@@ -1005,5 +1005,8 @@ def add_extra_player_features_gregor(player_df, lineups_df):
 
 
 def load_lineups():
-    # TODO @gregor do this
-    pass
+    game_data = pd.read_pickle("../../data/processed/load_data_games_arr_v2_zan.pkl")
+    common_lineups = pd.read_pickle("../../data/processed/common_lineups.pkl")
+    game_data = game_data.concat([game_data, common_lineups], axis=1)
+    game_data.to_pickle('../../data/processed/load_data_games_arr_v2_zan.pkl')
+    return game_data
