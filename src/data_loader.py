@@ -408,7 +408,7 @@ def load_game_data_zan(columns=None, seasons=None, path=RAW_DATA_PATH, force_rec
     :param force_recompute:
     :return:
     """
-    print("Function called")
+    print("Function load_data_zan called")
     GAME_ID_STR = "GAME_ID"
     data_columns = ["play_count", "home_team_id", "visitor_team_id", "home_record_wins", "home_record_losses"]
     dir_path = os.path.dirname(os.path.realpath(__file__))
@@ -677,7 +677,7 @@ def load_game_data_zan(columns=None, seasons=None, path=RAW_DATA_PATH, force_rec
             print(f"Calculated game data for the {pbp_data['season_name'][0]} season")
 
         print("Concatenating common lineups")
-        games_df = games_df.concat([games_df, common_lineups], axis=1)
+        games_df = pd.concat([games_df, common_lineups], axis=1)
 
         if len(games_df.index) < 1:
             raise Exception("Game data is non-existent! Check for bugs")
