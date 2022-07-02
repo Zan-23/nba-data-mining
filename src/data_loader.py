@@ -477,15 +477,20 @@ def load_game_data_zan(columns=None, seasons=None, path=RAW_DATA_PATH, force_rec
                 games_df.at[game_id, "minutes_played"] = 48 + (games_df.at[game_id, "periods"] - 4) * 2.5
 
                 # Players deployed
-                games_df.at[game_id, "visitor_players_deployed"] = len(set(
-                    pbp_grouped[person1_visitor_mask]["PLAYER1_ID"].unique())
-                        .union(pbp_grouped[pbp_grouped["PERSON2TYPE"] == "VISITOR_PLAYER"]["PLAYER2_ID"].unique())\
-                        .union(pbp_grouped[pbp_grouped["PERSON3TYPE"] == "VISITOR_PLAYER"]["PLAYER3_ID"].unique()))
+                # TODO new feature, player IDs
+                vis_players_deployed_arr = [set(pbp_grouped[person1_visitor_mask]["PLAYER1_ID"].unique())\
+                    .union(pbp_grouped[pbp_grouped["PERSON2TYPE"] == "VISITOR_PLAYER"]["PLAYER2_ID"].unique())\
+                    .union(pbp_grouped[pbp_grouped["PERSON3TYPE"] == "VISITOR_PLAYER"]["PLAYER3_ID"].unique())]
 
-                games_df.at[game_id, "home_players_deployed"] = len(set(
-                    pbp_grouped[person1_home_mask]["PLAYER1_ID"].unique())
+                games_df.at[game_id, "visitor_players_deployed_ids"] = vis_players_deployed_arr
+                games_df.at[game_id, "visitor_players_deployed"] = len(vis_players_deployed_arr[0])
+
+                # TODO new feature, player IDs
+                home_players_deployed_arr = [set(pbp_grouped[person1_home_mask]["PLAYER1_ID"].unique())\
                         .union(pbp_grouped[pbp_grouped["PERSON2TYPE"] == "HOME_PLAYER"]["PLAYER2_ID"].unique())\
-                        .union(pbp_grouped[pbp_grouped["PERSON3TYPE"] == "HOME_PLAYER"]["PLAYER3_ID"].unique()))
+                        .union(pbp_grouped[pbp_grouped["PERSON3TYPE"] == "HOME_PLAYER"]["PLAYER3_ID"].unique())]
+                games_df.at[game_id, "home_players_deployed_ids"] = home_players_deployed_arr
+                games_df.at[game_id, "home_players_deployed"] = len(home_players_deployed_arr[0])
 
                 # Used masks
                 f_goal_made_m = pbp_grouped["EVENTMSGTYPE"] == "FIELD_GOAL_MADE"
@@ -672,6 +677,9 @@ def load_game_data_zan(columns=None, seasons=None, path=RAW_DATA_PATH, force_rec
 
             print(f"Calculated game data for the {pbp_data['season_name'][0]} season")
 
+        # extra feature for combined games, which can be done after all games are processed
+        games_df["games_already_played_in_season"] = games_df["visitor_record_wins"] + games_df["visitor_record_losses"]
+
         if len(games_df.index) < 1:
             raise Exception("Game data is non-existent! Check for bugs")
         else:
@@ -692,7 +700,7 @@ def load_game_data_zan(columns=None, seasons=None, path=RAW_DATA_PATH, force_rec
                            "visitor_scoring_leader", "visitor_scoring_leader_points",
                            "home_made_max_shot_distance", "visitor_made_max_shot_distance",
                            "home_made_min_shot_distance", "visitor_made_min_shot_distance",
-                           "visitor_record_losses"]
+                           "visitor_record_losses", "games_already_played_in_season"]
 
             games_df[int_columns] = games_df[int_columns].astype(int)
             # saving seasons arr to file, can be recomputed as single df
