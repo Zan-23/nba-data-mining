@@ -9,7 +9,29 @@ from src.data_loader import load_game_data_zan
 def prepare_features_for_season_based_predictions(save_to_file=False):
     """
     Function will prepare the dataset and all its features for the season based predictions.
-    :return:
+
+    :param save_to_file: If True, the prepared data will be saved to a file
+    :return: Dictionary with the prepared data:
+    {
+        "all_seasons_info": {
+            "team_ids_arr": <all team ids>
+            "player_ids_arr": <all player ids>
+            "games_played": <count of all games played>
+            ... here features which hold true for the whole dataset are added
+        },
+        "seasons": {
+            "2001-2002": {
+                "games": pd.Dataframe of all the games in that seasons with precomputed features
+                "player_info": pd.Dataframe of all the player data in that season (from file not from data loader)
+            },
+            ...
+            "2018-2019": {
+                "games": pd.Dataframe of all the games in that seasons with precomputed features
+                "player_info": pd.Dataframe of all the player data in that season (from file not from data loader)
+            },
+    }
+    Data could be also saved as JSON but the pandas structure would then have to be unraveled.
+
     """
     player_info = prepare_player_df()
     games_df = load_game_data_zan(force_recompute=False)
