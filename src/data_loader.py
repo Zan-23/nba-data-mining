@@ -2,8 +2,8 @@ import os
 import pickle
 from collections import defaultdict
 from copy import deepcopy
-from data_specification import LOAD_DATA_COL_TYPES, CATEGORIES_COLS_ARR
-from data_specification import EVENTMSGTYPE_dict, EVENTMSGACTIONTYPE_FIELD_GOAL_dict, \
+from src.data_specification import LOAD_DATA_COL_TYPES, CATEGORIES_COLS_ARR
+from src.data_specification import EVENTMSGTYPE_dict, EVENTMSGACTIONTYPE_FIELD_GOAL_dict, \
     EVENTMSGACTIONTYPE_FREE_THROW_dict, EVENTMSGACTIONTYPE_REBOUND_dict, PERSONTYPE_dict
 
 import numpy as np
