@@ -23,49 +23,120 @@ class DataPreparator:
         self.label_enc = LabelEncoder()
 
         self.games_df = self.load_game_df()
+        self.games_df = self.add_recent_stats(self.games_df)
         self.players_df = self.load_player_df()
 
         self.general_data_dict = self.prepare_query_dict_structure()
 
-        self.x_common_cols, self.x_home_cols, self.x_visit_cols = self.select_columns_for_predictions()
+        self.x_home_cols, self.x_visit_cols = None, None    # self.select_columns_for_predictions()
         # validation sets to be used at the end
         self.x_val = None
         self.y_val = None
 
+    def add_recent_stats(self, game_data, recent_range=10):
+        game_data = game_data.copy().sort_index().reset_index()
+        unique_team_ids = set(game_data["visitor_team_id"].to_list())
+        games_by_team_id = {
+            team_id: game_data[(game_data["visitor_team_id"] == team_id) | (game_data["home_team_id"] == team_id)] for
+            team_id in unique_team_ids}
+
+        for team in ["home", "visitor"]:
+            game_data[f"{team}_recent_home_game_ratio"] = 0
+            game_data[f"{team}_recent_win_ratio"] = 0
+            game_data[f"{team}_recent_points"] = 0
+            for shot in ["fg", "3PT", "ft"]:
+                for result in ["made", "missed"]:
+                    game_data[f"{team}_recent_{shot}_{result}"] = 0
+            for feature in ["players_deployed", "rebound", "turnover", "foul"]:
+                game_data[f"{team}_recent_{feature}"] = 0
+
+        for i, game in game_data.iterrows():
+            for team in ["home", "visitor"]:
+                team_id = game[f"{team}_team_id"]
+                recent_games = games_by_team_id[team_id].loc[:i - 1].tail(recent_range)
+                recent_window = len(recent_games)
+
+                game_data.at[i, f"{team}_recent_home_game_ratio"] = len(recent_games[recent_games[
+                                                                                         "home_team_id"] == team_id]) / recent_window if recent_window > 0 else np.NAN
+                game_data.at[i, f"{team}_recent_win_ratio"] = len(
+                    recent_games[((recent_games["visitor_team_id"] == team_id)
+                                  & (recent_games["home_win"] == False)) | (
+                                         (recent_games[
+                                              "home_team_id"] == team_id) & (
+                                                 recent_games[
+                                                     "home_win"] == True))]) / recent_window if recent_window > 0 else np.NAN
+                game_data.at[i, f"{team}_recent_points"] = (recent_games[recent_games["visitor_team_id"] == team_id][
+                                                                "visitor_final_score"].sum() +
+                                                            recent_games[recent_games["home_team_id"] == team_id][
+                                                                "home_final_score"].sum()) / recent_window
+                for shot in ["fg", "3PT", "ft"]:
+                    for result in ["made", "missed"]:
+                        game_data.at[i, f"{team}_recent_{shot}_{result}"] = (recent_games[recent_games[
+                                                                                              "visitor_team_id"] == team_id][
+                                                                                 f"visitor_{shot}_{result}"].sum() +
+                                                                             recent_games[recent_games[
+                                                                                              "home_team_id"] == team_id][
+                                                                                 f"home_{shot}_{result}"].sum()) / recent_window
+                for feature in ["players_deployed", "rebound", "turnover", "foul"]:
+                    game_data.at[i, f"{team}_recent_{feature}"] = (recent_games[
+                                                                       recent_games["visitor_team_id"] == team_id][
+                                                                       f"visitor_{feature}"].sum() + recent_games[
+                                                                       recent_games["home_team_id"] == team_id][
+                                                                       f"home_{feature}"].sum()) / recent_window
+        return game_data
+
     @staticmethod
-    def select_columns_for_predictions():
+    def select_columns_for_predictions(recent_cols=True):
         """
         TODO - add description
         :return:
         """
-        x_common_cols = ["home_win", "periods", "minutes_played", "tip_off_winner",
-                         "games_already_played_in_season"]
-        x_home_cols = x_common_cols + ["home_team_id", "home_record_wins", "home_record_losses",
-                                       "home_final_score", "home_fg_made", "home_fg_missed",
-                                       "home_3PT_made", "home_3PT_missed", "home_ft_made", "home_ft_missed",
-                                       "home_rebound", "home_team_rebound", "home_turnover",
-                                       "home_team_turnover", "home_foul", "home_subs", "home_timeout",
-                                       "home_jump_balls_won",
-                                       "home_ejection", "home_team_ejection", "home_scoring_leader",
-                                       "home_scoring_leader_points", "home_made_max_shot_distance",
-                                       "home_made_min_shot_distance", "home_made_mean_shot_distance"]
-        x_visit_cols = x_common_cols + ["visitor_team_id", "visitor_record_wins", "visitor_record_losses",
-                                        "visitor_final_score", "visitor_fg_made", "visitor_fg_missed",
-                                        "visitor_3PT_made", "visitor_3PT_missed", "visitor_ft_made",
-                                        "visitor_ft_missed",
-                                        "visitor_rebound", "visitor_team_rebound", "visitor_turnover",
-                                        "visitor_team_turnover", "visitor_foul", "visitor_subs",
-                                        "visitor_timeout",
-                                        "visitor_jump_balls_won",
-                                        "visitor_ejection", "visitor_team_ejection", "visitor_scoring_leader",
-                                        "visitor_scoring_leader_points", "visitor_made_max_shot_distance",
-                                        "visitor_made_min_shot_distance", "visitor_made_mean_shot_distance"]
-        print(f"\nColumns that will be used are of lengths: \n"
-              f"    - x_home_cols: {len(x_home_cols)}, \n"
-              f"    - x_visit_cols length: {len(x_visit_cols)}")
+        if not recent_cols:
+            x_common_cols = ["home_win", "periods", "minutes_played", "tip_off_winner",
+                             "games_already_played_in_season"]
+            x_home_cols = x_common_cols + ["home_team_id", "home_record_wins", "home_record_losses",
+                                           "home_final_score", "home_fg_made", "home_fg_missed",
+                                           "home_3PT_made", "home_3PT_missed", "home_ft_made", "home_ft_missed",
+                                           "home_rebound", "home_team_rebound", "home_turnover",
+                                           "home_team_turnover", "home_foul", "home_subs", "home_timeout",
+                                           "home_jump_balls_won",
+                                           "home_ejection", "home_team_ejection", "home_scoring_leader",
+                                           "home_scoring_leader_points", "home_made_max_shot_distance",
+                                           "home_made_min_shot_distance", "home_made_mean_shot_distance"]
+            x_visit_cols = x_common_cols + ["visitor_team_id", "visitor_record_wins", "visitor_record_losses",
+                                            "visitor_final_score", "visitor_fg_made", "visitor_fg_missed",
+                                            "visitor_3PT_made", "visitor_3PT_missed", "visitor_ft_made",
+                                            "visitor_ft_missed",
+                                            "visitor_rebound", "visitor_team_rebound", "visitor_turnover",
+                                            "visitor_team_turnover", "visitor_foul", "visitor_subs",
+                                            "visitor_timeout",
+                                            "visitor_jump_balls_won",
+                                            "visitor_ejection", "visitor_team_ejection", "visitor_scoring_leader",
+                                            "visitor_scoring_leader_points", "visitor_made_max_shot_distance",
+                                            "visitor_made_min_shot_distance", "visitor_made_mean_shot_distance"]
+            print(f"\nColumns that will be used are of lengths: \n"
+                  f"    - x_home_cols: {len(x_home_cols)}, \n"
+                  f"    - x_visit_cols length: {len(x_visit_cols)}")
+        else:
+            x_home_cols = ["home_recent_home_game_ratio", "home_recent_win_ratio",
+                           "home_recent_points", "home_recent_fg_made",
+                           "home_recent_fg_missed", "home_recent_3PT_made",
+                           "home_recent_3PT_missed", "home_recent_ft_made",
+                           "home_recent_ft_missed", "home_recent_players_deployed",
+                           "home_recent_rebound", "home_recent_turnover", "home_recent_foul"]
+
+            x_visit_cols = ["visitor_recent_home_game_ratio", "visitor_recent_win_ratio",
+                            "visitor_recent_points", "visitor_recent_fg_made",
+                            "visitor_recent_fg_missed", "visitor_recent_3PT_made",
+                            "visitor_recent_3PT_missed", "visitor_recent_ft_made",
+                            "visitor_recent_ft_missed", "visitor_recent_players_deployed",
+                            "visitor_recent_rebound", "visitor_recent_turnover", "visitor_recent_foul"]
+            print(f"\nColumns that will be used are of lengths: \n"
+                  f"    - x_home_cols: {len(x_home_cols)}, \n"
+                  f"    - x_visit_cols length: {len(x_visit_cols)}")
         assert len(x_home_cols) == len(x_visit_cols), "x_home_cols and x_visit_cols should have the same length!"
 
-        return x_common_cols, x_home_cols, x_visit_cols
+        return x_home_cols, x_visit_cols
 
     # noinspection PyUnresolvedReferences
     def prepare_data_splits(self, season, data_split=None):
@@ -102,6 +173,8 @@ class DataPreparator:
         return x_train, y_train, x_test, y_test
 
     def prepare_x_matrix_and_y_vector(self, games_df):
+        self.x_home_cols, self.x_visit_cols = self.select_columns_for_predictions()
+
         assert len(self.x_home_cols) == len(self.x_visit_cols), "x_home_cols and x_visit_cols should have the same " \
                                                                 "length! "
 
