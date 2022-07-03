@@ -1011,3 +1011,35 @@ def add_extra_player_features_gregor(player_df, lineups_df):
 def load_lineups():
     # TODO @gregor do this
     pass
+
+def add_recent_stats(game_data, recent_range=5):
+    game_data = game_data.copy().sort_index().reset_index()
+    unique_team_ids = set(game_data["visitor_team_id"].to_list())
+    games_by_team_id = {team_id:game_data[(game_data["visitor_team_id"]==team_id)|(game_data["home_team_id"]==team_id)] for team_id in unique_team_ids}
+    
+    for team in ["home","visitor"]:
+        game_data[f"{team}_recent_home_game_ratio"] = 0
+        game_data[f"{team}_recent_win_ratio"] = 0
+        game_data[f"{team}_recent_points"] = 0
+        for shot in ["fg","3PT","ft"]:
+            for result in ["made","missed"]:
+                game_data[f"{team}_recent_{shot}_{result}"] = 0
+        for feature in ["players_deployed","rebound","turnover","foul"]:
+            game_data[f"{team}_recent_{feature}"] = 0
+    
+    for i,game in game_data.iterrows():
+        for team in ["home","visitor"]:
+            team_id = game[f"{team}_team_id"]
+            recent_games = games_by_team_id[team_id].loc[:i-1].tail(recent_range)
+            recent_window = len(recent_games)
+    
+            game_data.at[i, f"{team}_recent_home_game_ratio"] = len(recent_games[recent_games["home_team_id"]==team_id]) / recent_window if recent_window>0 else np.NAN
+            game_data.at[i, f"{team}_recent_win_ratio"] = len(recent_games[((recent_games["visitor_team_id"]==team_id)&(recent_games["home_win"]==False))|((recent_games["home_team_id"]==team_id)&(recent_games["home_win"]==True))]) / recent_window if recent_window>0 else np.NAN
+            game_data.at[i, f"{team}_recent_points"] = (recent_games[recent_games["visitor_team_id"]==team_id]["visitor_final_score"].sum() + recent_games[recent_games["home_team_id"]==team_id]["home_final_score"].sum()) / recent_window
+            for shot in ["fg","3PT","ft"]:
+                for result in ["made","missed"]:
+                    game_data.at[i, f"{team}_recent_{shot}_{result}"] = (recent_games[recent_games["visitor_team_id"]==team_id][f"visitor_{shot}_{result}"].sum() + recent_games[recent_games["home_team_id"]==team_id][f"home_{shot}_{result}"].sum()) / recent_window
+            for feature in ["players_deployed","rebound","turnover","foul"]:
+                    game_data.at[i, f"{team}_recent_{feature}"] = (recent_games[recent_games["visitor_team_id"]==team_id][f"visitor_{feature}"].sum() + recent_games[recent_games["home_team_id"]==team_id][f"home_{feature}"].sum()) / recent_window
+    return game_data
+
