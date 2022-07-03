@@ -118,14 +118,14 @@ class DataPreparator:
                   f"    - x_home_cols: {len(x_home_cols)}, \n"
                   f"    - x_visit_cols length: {len(x_visit_cols)}")
         else:
-            x_home_cols = ["home_recent_home_game_ratio", "home_recent_win_ratio",
+            x_home_cols = ["home_team_id", "home_recent_home_game_ratio", "home_recent_win_ratio",
                            "home_recent_points", "home_recent_fg_made",
                            "home_recent_fg_missed", "home_recent_3PT_made",
                            "home_recent_3PT_missed", "home_recent_ft_made",
                            "home_recent_ft_missed", "home_recent_players_deployed",
                            "home_recent_rebound", "home_recent_turnover", "home_recent_foul"]
 
-            x_visit_cols = ["visitor_recent_home_game_ratio", "visitor_recent_win_ratio",
+            x_visit_cols = ["visitor_team_id", "visitor_recent_home_game_ratio", "visitor_recent_win_ratio",
                             "visitor_recent_points", "visitor_recent_fg_made",
                             "visitor_recent_fg_missed", "visitor_recent_3PT_made",
                             "visitor_recent_3PT_missed", "visitor_recent_ft_made",
@@ -199,6 +199,14 @@ class DataPreparator:
             y_vector_arr[i_counter] = 1
             y_vector_arr[i_counter + 1] = 0
             i_counter += 2
+
+            # for combining all the features of one game together, TODO fix the structure
+            # x_matrix_arr = np.zeros((len(games_df.index), len(self.x_home_cols) + len(self.x_visit_cols)))
+            # y_vector_arr = np.zeros((len(games_df.index)))
+            #
+            # x_matrix_arr[i_counter, :] = np.concatenate((win_team, lose_team), axis=0)
+            # y_vector_arr[i_counter] = row["home_win"]
+            # i_counter += 1
 
         return x_matrix_arr, y_vector_arr
 
