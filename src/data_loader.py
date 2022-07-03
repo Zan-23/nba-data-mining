@@ -398,20 +398,23 @@ def load_game_data(columns=None, seasons=None, path=RAW_DATA_PATH, force_recompu
             return game_data_per_season
 
 
-def load_game_data_zan(columns=None, seasons=None, path=RAW_DATA_PATH, force_recompute=True):
+def load_game_data_zan(columns=None, seasons=None, path=RAW_DATA_PATH, force_recompute=True,
+                       out_f_name="./../data/processed/load_data_games_arr_v2_zan.pkl"):
     """
     Method loops through all the seasons and games and calculates per game metrics.
     TODO finish documentation
+
     :param columns:
     :param seasons:
     :param path:
     :param force_recompute:
+    :param out_f_name:
     :return:
     """
     GAME_ID_STR = "GAME_ID"
     data_columns = ["play_count", "home_team_id", "visitor_team_id", "home_record_wins", "home_record_losses"]
     dir_path = os.path.dirname(os.path.realpath(__file__))
-    games_data_file = os.path.join(dir_path, "../data/processed/load_data_games_arr_v2_zan.pkl")
+    games_data_file = os.path.join(dir_path, out_f_name)
 
     # reading from file or recomputing depending on the flags
     if not force_recompute and os.path.exists(games_data_file):
