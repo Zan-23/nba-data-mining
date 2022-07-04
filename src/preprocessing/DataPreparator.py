@@ -4,6 +4,7 @@ from copy import deepcopy
 
 import numpy as np
 import pandas as pd
+from sklearn import preprocessing
 
 from src.data_loader import load_game_data_zan
 from sklearn.preprocessing import LabelEncoder
@@ -28,7 +29,7 @@ class DataPreparator:
 
         self.general_data_dict = self.prepare_query_dict_structure()
 
-        self.x_home_cols, self.x_visit_cols = None, None    # self.select_columns_for_predictions()
+        self.x_home_cols, self.x_visit_cols = None, None  # self.select_columns_for_predictions()
         # validation sets to be used at the end
         self.x_val = None
         self.y_val = None
@@ -138,10 +139,34 @@ class DataPreparator:
 
         return x_home_cols, x_visit_cols
 
+    def normalize_columns(self):
+        pass
+        # TODO attempting to normalize some data columns
+        # cols_to_scale = ["home_recent_home_game_ratio", "home_recent_win_ratio",
+        #                  "home_recent_points", "home_recent_fg_made",
+        #                  "home_recent_fg_missed", "home_recent_3PT_made",
+        #                  "home_recent_3PT_missed", "home_recent_ft_made",
+        #                  "home_recent_ft_missed", "home_recent_players_deployed",
+        #                  "home_recent_rebound", "home_recent_turnover", "home_recent_foul",
+        #                  "visitor_recent_home_game_ratio", "visitor_recent_win_ratio",
+        #                  "visitor_recent_points", "visitor_recent_fg_made",
+        #                  "visitor_recent_fg_missed", "visitor_recent_3PT_made",
+        #                  "visitor_recent_3PT_missed", "visitor_recent_ft_made",
+        #                  "visitor_recent_ft_missed", "visitor_recent_players_deployed",
+        #                  "visitor_recent_rebound", "visitor_recent_turnover",
+        #                  "visitor_recent_foul"]
+        #
+        # df_to_scale_arr = games_df[cols_to_scale].to_numpy()
+        # min_max_scaler = preprocessing.StandardScaler()
+        # scaled_columns = min_max_scaler.fit_transform(df_to_scale_arr)
+        # print(scaled_columns)
+        # games_df[cols_to_scale] = scaled_columns
+
     # noinspection PyUnresolvedReferences
     def prepare_data_splits(self, season, data_split=None):
         if data_split is None:
-            data_split = {"train": 0.5, "test": 0.25, "validation": 0.25}
+            data_split = {"train": 0.8, "test": 0.1, "validation": 0.1}
+        assert sum(data_split.values()) == 1, "Data split should sum to 1!"
 
         curr_season_df = self.get_games_df_for_season(season)
         # encoding string and ID variables to labels
@@ -172,41 +197,50 @@ class DataPreparator:
 
         return x_train, y_train, x_test, y_test
 
-    def prepare_x_matrix_and_y_vector(self, games_df):
+    def prepare_x_matrix_and_y_vector(self, games_df, split_game_in_two_data_p=False):
         self.x_home_cols, self.x_visit_cols = self.select_columns_for_predictions()
 
         assert len(self.x_home_cols) == len(self.x_visit_cols), "x_home_cols and x_visit_cols should have the same " \
                                                                 "length! "
 
-        # Two times as many rows/data points will be generated as there are games in the season
-        # because each game will be represented by two rows in the matrix, win team stats and losing team stats
-        x_matrix_arr = np.zeros((len(games_df.index) * 2, len(self.x_home_cols)))
-        y_vector_arr = np.zeros((len(games_df.index) * 2))
-        i_counter = 0
-        for index, row in games_df.iterrows():
-            # split data depending on who won the game, each game becomes two data points
-            if row["home_win"] == 1:
-                win_team = row[self.x_home_cols].to_numpy()
-                lose_team = row[self.x_visit_cols].to_numpy()
-            elif row["home_win"] == 0:
-                win_team = row[self.x_visit_cols].to_numpy()
-                lose_team = row[self.x_home_cols].to_numpy()
-            else:
-                raise Exception("home_win should be either 0 or 1!")
+        x_matrix_arr, y_vector_arr = None, None
+        if split_game_in_two_data_p:
+            # Two times as many rows/data points will be generated as there are games in the season
+            # because each game will be represented by two rows in the matrix, win team stats and losing team stats
+            x_matrix_arr = np.zeros((len(games_df.index) * 2, len(self.x_home_cols)))
+            y_vector_arr = np.zeros((len(games_df.index) * 2))
+            i_counter = 0
+            for index, row in games_df.iterrows():
+                # split data depending on who won the game, each game becomes two data points
+                if row["home_win"] == 1:
+                    win_team = row[self.x_home_cols].to_numpy()
+                    lose_team = row[self.x_visit_cols].to_numpy()
+                elif row["home_win"] == 0:
+                    win_team = row[self.x_visit_cols].to_numpy()
+                    lose_team = row[self.x_home_cols].to_numpy()
+                else:
+                    raise Exception("home_win should be either 0 or 1!")
 
-            x_matrix_arr[i_counter, :] = win_team
-            x_matrix_arr[i_counter + 1, :] = lose_team
-            y_vector_arr[i_counter] = 1
-            y_vector_arr[i_counter + 1] = 0
-            i_counter += 2
+                x_matrix_arr[i_counter, :] = win_team
+                x_matrix_arr[i_counter + 1, :] = lose_team
+                y_vector_arr[i_counter] = 1
+                y_vector_arr[i_counter + 1] = 0
+                i_counter += 2
+        else:
+            h_and_v_cols = self.x_home_cols + self.x_visit_cols
+            x_matrix_arr = np.zeros((len(games_df.index), len(h_and_v_cols)))
+            y_vector_arr = np.zeros((len(games_df.index)))
+            i_counter = 0
+            for index, row in games_df.iterrows():
+                # split data depending on who won the game, each game becomes two data points
+                data_row = row[h_and_v_cols].to_numpy()
 
-            # for combining all the features of one game together, TODO fix the structure
-            # x_matrix_arr = np.zeros((len(games_df.index), len(self.x_home_cols) + len(self.x_visit_cols)))
-            # y_vector_arr = np.zeros((len(games_df.index)))
-            #
-            # x_matrix_arr[i_counter, :] = np.concatenate((win_team, lose_team), axis=0)
-            # y_vector_arr[i_counter] = row["home_win"]
-            # i_counter += 1
+                x_matrix_arr[i_counter, :] = data_row
+                y_vector_arr[i_counter] = row["home_win"]
+                i_counter += 1
+
+        if x_matrix_arr is None or y_vector_arr is None:
+            raise Exception("Unexpected error, x_matrix_arr or y_vector_arr is None!")
 
         return x_matrix_arr, y_vector_arr
 
