@@ -683,6 +683,14 @@ def load_game_data_zan(columns=None, seasons=None, path=RAW_DATA_PATH, force_rec
         # extra feature for combined games, which can be done after all games are processed
         games_df["games_already_played_in_season"] = games_df["visitor_record_wins"] + games_df["visitor_record_losses"]
 
+        # true shooting percentages
+        games_df["home_TSP"] = games_df["home_final_score"] / (2 * (
+                (games_df["home_fg_made"] + games_df["home_fg_missed"]) +
+                (0.44 * (games_df["home_3PT_made"] + games_df["home_3PT_missed"]))))
+        games_df["visitor_TSP"] = games_df["visitor_final_score"] / (2 * (
+                (games_df["visitor_fg_made"] + games_df["visitor_fg_missed"]) +
+                (0.44 * (games_df["visitor_3PT_made"] + games_df["visitor_3PT_missed"]))))
+
         if len(games_df.index) < 1:
             raise Exception("Game data is non-existent! Check for bugs")
         else:

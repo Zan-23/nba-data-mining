@@ -35,6 +35,7 @@ class DataPreparator:
         self.y_val = None
 
     def add_recent_stats(self, game_data, recent_range=10):
+        print("\nAdding recent stats to the dataframe...")
         game_data = game_data.copy().sort_index().reset_index()
         unique_team_ids = set(game_data["visitor_team_id"].to_list())
         games_by_team_id = {
@@ -45,6 +46,8 @@ class DataPreparator:
             game_data[f"{team}_recent_home_game_ratio"] = 0
             game_data[f"{team}_recent_win_ratio"] = 0
             game_data[f"{team}_recent_points"] = 0
+            game_data[f"{team}_recent_TSP"] = 0
+
             for shot in ["fg", "3PT", "ft"]:
                 for result in ["made", "missed"]:
                     game_data[f"{team}_recent_{shot}_{result}"] = 0
@@ -55,21 +58,27 @@ class DataPreparator:
             for team in ["home", "visitor"]:
                 team_id = game[f"{team}_team_id"]
                 recent_games = games_by_team_id[team_id].loc[:i - 1].tail(recent_range)
-                recent_window = len(recent_games)
+                recent_window = len(recent_games) if len(recent_games) > 0 else np.NAN
+                # could add to skip the lines if recent window is nan
 
                 game_data.at[i, f"{team}_recent_home_game_ratio"] = len(recent_games[recent_games[
-                                                                                         "home_team_id"] == team_id]) / recent_window if recent_window > 0 else np.NAN
+                                                                                         "home_team_id"] == team_id]) / recent_window
                 game_data.at[i, f"{team}_recent_win_ratio"] = len(
                     recent_games[((recent_games["visitor_team_id"] == team_id)
                                   & (recent_games["home_win"] == False)) | (
                                          (recent_games[
                                               "home_team_id"] == team_id) & (
                                                  recent_games[
-                                                     "home_win"] == True))]) / recent_window if recent_window > 0 else np.NAN
+                                                     "home_win"] == True))]) / recent_window
                 game_data.at[i, f"{team}_recent_points"] = (recent_games[recent_games["visitor_team_id"] == team_id][
                                                                 "visitor_final_score"].sum() +
                                                             recent_games[recent_games["home_team_id"] == team_id][
                                                                 "home_final_score"].sum()) / recent_window
+
+                game_data.at[i, f"{team}_recent_TSP"] = (recent_games[recent_games["visitor_team_id"] == team_id][
+                                                                "home_TSP"].sum() +
+                                                         recent_games[recent_games["home_team_id"] == team_id][
+                                                                "visitor_TSP"].sum()) / recent_window
                 for shot in ["fg", "3PT", "ft"]:
                     for result in ["made", "missed"]:
                         game_data.at[i, f"{team}_recent_{shot}_{result}"] = (recent_games[recent_games[
@@ -119,14 +128,14 @@ class DataPreparator:
                   f"    - x_home_cols: {len(x_home_cols)}, \n"
                   f"    - x_visit_cols length: {len(x_visit_cols)}")
         else:
-            x_home_cols = ["home_team_id", "home_recent_home_game_ratio", "home_recent_win_ratio",
+            x_home_cols = ["home_team_id", "home_recent_TSP", "home_recent_home_game_ratio", "home_recent_win_ratio",
                            "home_recent_points", "home_recent_fg_made",
                            "home_recent_fg_missed", "home_recent_3PT_made",
                            "home_recent_3PT_missed", "home_recent_ft_made",
                            "home_recent_ft_missed", "home_recent_players_deployed",
                            "home_recent_rebound", "home_recent_turnover", "home_recent_foul"]
 
-            x_visit_cols = ["visitor_team_id", "visitor_recent_home_game_ratio", "visitor_recent_win_ratio",
+            x_visit_cols = ["visitor_team_id", "visitor_recent_TSP", "visitor_recent_home_game_ratio", "visitor_recent_win_ratio",
                             "visitor_recent_points", "visitor_recent_fg_made",
                             "visitor_recent_fg_missed", "visitor_recent_3PT_made",
                             "visitor_recent_3PT_missed", "visitor_recent_ft_made",
