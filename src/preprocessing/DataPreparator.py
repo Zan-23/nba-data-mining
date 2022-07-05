@@ -76,9 +76,9 @@ class DataPreparator:
                                                                 "home_final_score"].sum()) / recent_window
 
                 game_data.at[i, f"{team}_recent_TSP"] = (recent_games[recent_games["visitor_team_id"] == team_id][
-                                                                "home_TSP"].sum() +
+                                                             "home_TSP"].sum() +
                                                          recent_games[recent_games["home_team_id"] == team_id][
-                                                                "visitor_TSP"].sum()) / recent_window
+                                                             "visitor_TSP"].sum()) / recent_window
                 for shot in ["fg", "3PT", "ft"]:
                     for result in ["made", "missed"]:
                         game_data.at[i, f"{team}_recent_{shot}_{result}"] = (recent_games[recent_games[
@@ -135,7 +135,8 @@ class DataPreparator:
                            "home_recent_ft_missed", "home_recent_players_deployed",
                            "home_recent_rebound", "home_recent_turnover", "home_recent_foul"]
 
-            x_visit_cols = ["visitor_team_id", "visitor_recent_TSP", "visitor_recent_home_game_ratio", "visitor_recent_win_ratio",
+            x_visit_cols = ["visitor_team_id", "visitor_recent_TSP", "visitor_recent_home_game_ratio",
+                            "visitor_recent_win_ratio",
                             "visitor_recent_points", "visitor_recent_fg_made",
                             "visitor_recent_fg_missed", "visitor_recent_3PT_made",
                             "visitor_recent_3PT_missed", "visitor_recent_ft_made",
@@ -148,28 +149,27 @@ class DataPreparator:
 
         return x_home_cols, x_visit_cols
 
-    def normalize_columns(self):
-        pass
-        # TODO attempting to normalize some data columns
-        # cols_to_scale = ["home_recent_home_game_ratio", "home_recent_win_ratio",
-        #                  "home_recent_points", "home_recent_fg_made",
-        #                  "home_recent_fg_missed", "home_recent_3PT_made",
-        #                  "home_recent_3PT_missed", "home_recent_ft_made",
-        #                  "home_recent_ft_missed", "home_recent_players_deployed",
-        #                  "home_recent_rebound", "home_recent_turnover", "home_recent_foul",
-        #                  "visitor_recent_home_game_ratio", "visitor_recent_win_ratio",
-        #                  "visitor_recent_points", "visitor_recent_fg_made",
-        #                  "visitor_recent_fg_missed", "visitor_recent_3PT_made",
-        #                  "visitor_recent_3PT_missed", "visitor_recent_ft_made",
-        #                  "visitor_recent_ft_missed", "visitor_recent_players_deployed",
-        #                  "visitor_recent_rebound", "visitor_recent_turnover",
-        #                  "visitor_recent_foul"]
-        #
-        # df_to_scale_arr = games_df[cols_to_scale].to_numpy()
-        # min_max_scaler = preprocessing.StandardScaler()
-        # scaled_columns = min_max_scaler.fit_transform(df_to_scale_arr)
-        # print(scaled_columns)
-        # games_df[cols_to_scale] = scaled_columns
+    @staticmethod
+    def normalize_columns(games_df):
+        # not necessary the same as original columns, for example team id can't be normalized
+        columns_to_scale = ["home_recent_TSP", "home_recent_home_game_ratio", "home_recent_win_ratio",
+                            "home_recent_points", "home_recent_fg_made",
+                            "home_recent_fg_missed", "home_recent_3PT_made",
+                            "home_recent_3PT_missed", "home_recent_ft_made",
+                            "home_recent_ft_missed", "home_recent_players_deployed",
+                            "home_recent_rebound", "home_recent_turnover", "home_recent_foul"] \
+                           + ["visitor_recent_TSP", "visitor_recent_home_game_ratio",
+                              "visitor_recent_win_ratio",
+                              "visitor_recent_points", "visitor_recent_fg_made",
+                              "visitor_recent_fg_missed", "visitor_recent_3PT_made",
+                              "visitor_recent_3PT_missed", "visitor_recent_ft_made",
+                              "visitor_recent_ft_missed", "visitor_recent_players_deployed",
+                              "visitor_recent_rebound", "visitor_recent_turnover", "visitor_recent_foul"]
+
+        df_to_scale_arr = games_df[columns_to_scale].to_numpy()
+        min_max_scaler = preprocessing.StandardScaler()
+        scaled_columns = min_max_scaler.fit_transform(df_to_scale_arr)
+        games_df[columns_to_scale] = scaled_columns
 
     # noinspection PyUnresolvedReferences
     def prepare_data_splits(self, season, data_split=None):
@@ -206,11 +206,13 @@ class DataPreparator:
 
         return x_train, y_train, x_test, y_test
 
-    def prepare_x_matrix_and_y_vector(self, games_df, split_game_in_two_data_p=False):
+    def prepare_x_matrix_and_y_vector(self, games_df, split_game_in_two_data_p=False, normalize_columns=True):
         self.x_home_cols, self.x_visit_cols = self.select_columns_for_predictions()
 
         assert len(self.x_home_cols) == len(self.x_visit_cols), "x_home_cols and x_visit_cols should have the same " \
                                                                 "length! "
+        if normalize_columns:
+            self.normalize_columns(games_df)
 
         x_matrix_arr, y_vector_arr = None, None
         if split_game_in_two_data_p:
