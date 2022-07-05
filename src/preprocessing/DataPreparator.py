@@ -151,7 +151,7 @@ class DataPreparator:
 
     @staticmethod
     def normalize_columns(games_df):
-        # not necessary the same as original columns, for example team id can't be normalized
+        # not necessarily the same as original columns, for example team id can't be normalized
         columns_to_scale = ["home_recent_TSP", "home_recent_home_game_ratio", "home_recent_win_ratio",
                             "home_recent_points", "home_recent_fg_made",
                             "home_recent_fg_missed", "home_recent_3PT_made",
