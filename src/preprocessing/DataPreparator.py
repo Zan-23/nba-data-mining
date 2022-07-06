@@ -7,7 +7,7 @@ import pandas as pd
 from sklearn import preprocessing
 
 from src.data_loader import load_game_data_zan
-from sklearn.preprocessing import LabelEncoder
+from sklearn.preprocessing import LabelEncoder, OneHotEncoder
 
 
 class DataPreparator:
@@ -22,6 +22,8 @@ class DataPreparator:
 
         # used for encoding team names
         self.label_enc = LabelEncoder()
+        # self.label_enc = OneHotEncoder(handle_unknown='ignore')
+        # enc.fit(X)
 
         self.games_df = self.load_game_df()
         self.games_df = self.add_recent_stats(self.games_df)
@@ -47,6 +49,7 @@ class DataPreparator:
             game_data[f"{team}_recent_win_ratio"] = 0
             game_data[f"{team}_recent_points"] = 0
             game_data[f"{team}_recent_TSP"] = 0
+            game_data[f"{team}_final_score_diff"] = 0
 
             for shot in ["fg", "3PT", "ft"]:
                 for result in ["made", "missed"]:
@@ -60,6 +63,10 @@ class DataPreparator:
                 recent_games = games_by_team_id[team_id].loc[:i - 1].tail(recent_range)
                 recent_window = len(recent_games) if len(recent_games) > 0 else np.NAN
                 # could add to skip the lines if recent window is nan
+
+                # visitor and home filters
+                # home_filter = (recent_games["home_team_id"] == team_id)
+                # visitor_filter = (recent_games["visitor_team_id"] == team_id)
 
                 game_data.at[i, f"{team}_recent_home_game_ratio"] = len(recent_games[recent_games[
                                                                                          "home_team_id"] == team_id]) / recent_window
@@ -76,9 +83,14 @@ class DataPreparator:
                                                                 "home_final_score"].sum()) / recent_window
 
                 game_data.at[i, f"{team}_recent_TSP"] = (recent_games[recent_games["visitor_team_id"] == team_id][
-                                                             "home_TSP"].sum() +
+                                                             "visitor_TSP"].sum() +
                                                          recent_games[recent_games["home_team_id"] == team_id][
-                                                             "visitor_TSP"].sum()) / recent_window
+                                                             "home_TSP"].sum()) / recent_window
+
+                game_data.at[i, f"{team}_final_score_diff"] = (recent_games[recent_games["visitor_team_id"] == team_id]
+                                                               ["visitor_final_score_diff"].sum()
+                                                               + recent_games[recent_games["home_team_id"] == team_id]
+                                                               ["home__final_score_diff"].sum()) / recent_window
                 for shot in ["fg", "3PT", "ft"]:
                     for result in ["made", "missed"]:
                         game_data.at[i, f"{team}_recent_{shot}_{result}"] = (recent_games[recent_games[
