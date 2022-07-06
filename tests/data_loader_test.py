@@ -11,7 +11,9 @@ def test_game_loader_equality():
 
     # compare the two methods for any different data
     extra_columns = ["games_already_played_in_season", "home_players_deployed_ids",
-                     "visitor_players_deployed_ids", "home_TSP", "visitor_TSP"]
+                     "visitor_players_deployed_ids",
+                     "home_TSP", "visitor_TSP",
+                     "home_final_score_diff", "visitor_final_score_diff"]
     common_cols = [i for i in data_zan.columns if i not in extra_columns]
 
     data_zan = data_zan[common_cols]
