@@ -65,46 +65,37 @@ class DataPreparator:
                 # could add to skip the lines if recent window is nan
 
                 # visitor and home filters
-                # home_filter = (recent_games["home_team_id"] == team_id)
-                # visitor_filter = (recent_games["visitor_team_id"] == team_id)
+                home_filter = (recent_games["home_team_id"] == team_id)
+                visitor_filter = (recent_games["visitor_team_id"] == team_id)
+                home_team_games = recent_games[home_filter]
+                visitor_team_games = recent_games[visitor_filter]
 
-                game_data.at[i, f"{team}_recent_home_game_ratio"] = len(recent_games[recent_games[
-                                                                                         "home_team_id"] == team_id]) / recent_window
+                game_data.at[i, f"{team}_recent_home_game_ratio"] = len(home_team_games) / recent_window
                 game_data.at[i, f"{team}_recent_win_ratio"] = len(
-                    recent_games[((recent_games["visitor_team_id"] == team_id)
-                                  & (recent_games["home_win"] == False)) | (
-                                         (recent_games[
-                                              "home_team_id"] == team_id) & (
-                                                 recent_games[
-                                                     "home_win"] == True))]) / recent_window
-                game_data.at[i, f"{team}_recent_points"] = (recent_games[recent_games["visitor_team_id"] == team_id][
-                                                                "visitor_final_score"].sum() +
-                                                            recent_games[recent_games["home_team_id"] == team_id][
-                                                                "home_final_score"].sum()) / recent_window
+                    recent_games[(visitor_filter & (recent_games["home_win"] == False)) |
+                                 (home_filter & (recent_games["home_win"] == True))]) / recent_window
 
-                game_data.at[i, f"{team}_recent_TSP"] = (recent_games[recent_games["visitor_team_id"] == team_id][
-                                                             "visitor_TSP"].sum() +
-                                                         recent_games[recent_games["home_team_id"] == team_id][
-                                                             "home_TSP"].sum()) / recent_window
+                game_data.at[i, f"{team}_recent_points"] = (visitor_team_games["visitor_final_score"].sum()
+                                                            + home_team_games["home_final_score"].sum()) / recent_window
 
-                game_data.at[i, f"{team}_final_score_diff"] = (recent_games[recent_games["visitor_team_id"] == team_id]
-                                                               ["visitor_final_score_diff"].sum()
-                                                               + recent_games[recent_games["home_team_id"] == team_id]
-                                                               ["home__final_score_diff"].sum()) / recent_window
+                game_data.at[i, f"{team}_recent_TSP"] = (visitor_team_games["visitor_TSP"].sum()
+                                                         + home_team_games["home_TSP"].sum()) / recent_window
+
+                game_data.at[i, f"{team}_final_score_diff"] = (visitor_team_games["visitor_final_score_diff"].sum()
+                                                               + home_team_games["home_final_score_diff"].sum()) \
+                                                              / recent_window
                 for shot in ["fg", "3PT", "ft"]:
                     for result in ["made", "missed"]:
-                        game_data.at[i, f"{team}_recent_{shot}_{result}"] = (recent_games[recent_games[
-                                                                                              "visitor_team_id"] == team_id][
-                                                                                 f"visitor_{shot}_{result}"].sum() +
-                                                                             recent_games[recent_games[
-                                                                                              "home_team_id"] == team_id][
-                                                                                 f"home_{shot}_{result}"].sum()) / recent_window
+                        game_data.at[i, f"{team}_recent_{shot}_{result}"] = (visitor_team_games
+                                                                             [f"visitor_{shot}_{result}"].sum()
+                                                                             + home_team_games
+                                                                             [f"home_{shot}_{result}"].sum()) \
+                                                                            / recent_window
                 for feature in ["players_deployed", "rebound", "turnover", "foul"]:
-                    game_data.at[i, f"{team}_recent_{feature}"] = (recent_games[
-                                                                       recent_games["visitor_team_id"] == team_id][
-                                                                       f"visitor_{feature}"].sum() + recent_games[
-                                                                       recent_games["home_team_id"] == team_id][
-                                                                       f"home_{feature}"].sum()) / recent_window
+                    game_data.at[i, f"{team}_recent_{feature}"] = (visitor_team_games
+                                                                   [f"visitor_{feature}"].sum()
+                                                                   + home_team_games
+                                                                   [f"home_{feature}"].sum()) / recent_window
         return game_data
 
     @staticmethod
