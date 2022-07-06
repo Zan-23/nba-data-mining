@@ -13,30 +13,40 @@ from sklearn.preprocessing import LabelEncoder, OneHotEncoder
 class DataPreparator:
 
     def __init__(self, game_file_name="", player_file_name="./../../data/raw/player-data/player_info.csv",
-                 force_recompute=False):
+                 force_recompute_method_data=False, force_recompute_class_data=True):
         dir_path = os.path.dirname(os.path.realpath(__file__))
 
         self.game_file_name = os.path.join(dir_path, game_file_name)
         self.player_file_name = os.path.join(dir_path, player_file_name)
-        self.force_recompute = force_recompute
+        self.force_recompute_method_data = force_recompute_method_data
+        self.games_df_file_name = os.path.join(dir_path, "../../data/processed/prepared_data_games_df.pkl")
+
+        if force_recompute_class_data or not os.path.exists(self.games_df_file_name):
+            print("\nRecomputing recent game data ...")
+            self.games_df = self.load_game_df()
+            self.games_df = self.add_recent_stats(self.games_df)
+            self.save_games_df()
+        elif not force_recompute_class_data and os.path.exists(self.games_df_file_name):
+            print("\nLoading game data from file ...")
+            with open(self.games_df_file_name, "rb") as f:
+                self.games_df = pickle.load(f)
+        else:
+            raise Exception("Unknown configuration, check parameters!")
 
         # used for encoding team names
         self.label_enc = LabelEncoder()
-        # self.label_enc = OneHotEncoder(handle_unknown='ignore')
-        # enc.fit(X)
-
-        self.games_df = self.load_game_df()
-        self.games_df = self.add_recent_stats(self.games_df)
+        # TODO change and test encoder
+        # self.label_enc = OneHotEncoder(handle_unknown='ignore')   # enc.fit(X)
         self.players_df = self.load_player_df()
-
         self.general_data_dict = self.prepare_query_dict_structure()
 
-        self.x_home_cols, self.x_visit_cols = None, None  # self.select_columns_for_predictions()
         # validation sets to be used at the end
         self.x_val = None
         self.y_val = None
+        self.x_home_cols, self.x_visit_cols = None, None
 
-    def add_recent_stats(self, game_data, recent_range=10):
+    @staticmethod
+    def add_recent_stats(game_data, recent_range=10):
         print("\nAdding recent stats to the dataframe...")
         game_data = game_data.copy().sort_index().reset_index()
         unique_team_ids = set(game_data["visitor_team_id"].to_list())
@@ -131,15 +141,16 @@ class DataPreparator:
                   f"    - x_home_cols: {len(x_home_cols)}, \n"
                   f"    - x_visit_cols length: {len(x_visit_cols)}")
         else:
-            x_home_cols = ["home_team_id", "home_recent_TSP", "home_recent_home_game_ratio", "home_recent_win_ratio",
+            x_home_cols = ["home_team_id", "home_recent_TSP", "home_final_score_diff",
+                           "home_recent_home_game_ratio", "home_recent_win_ratio",
                            "home_recent_points", "home_recent_fg_made",
                            "home_recent_fg_missed", "home_recent_3PT_made",
                            "home_recent_3PT_missed", "home_recent_ft_made",
                            "home_recent_ft_missed", "home_recent_players_deployed",
                            "home_recent_rebound", "home_recent_turnover", "home_recent_foul"]
 
-            x_visit_cols = ["visitor_team_id", "visitor_recent_TSP", "visitor_recent_home_game_ratio",
-                            "visitor_recent_win_ratio",
+            x_visit_cols = ["visitor_team_id", "visitor_recent_TSP", "visitor_final_score_diff",
+                            "visitor_recent_home_game_ratio", "visitor_recent_win_ratio",
                             "visitor_recent_points", "visitor_recent_fg_made",
                             "visitor_recent_fg_missed", "visitor_recent_3PT_made",
                             "visitor_recent_3PT_missed", "visitor_recent_ft_made",
@@ -258,11 +269,10 @@ class DataPreparator:
 
         return x_matrix_arr, y_vector_arr
 
-    def prepare_query_dict_structure(self, output_file=None):
+    def prepare_query_dict_structure(self):
         """
          Function will prepare the dataset and all its features for the season based predictions.
 
-         :param output_file: None by default, if not None, the prepared data will be saved to a file.
          :return: Dictionary with the prepared data:
          {
              "all_seasons_info": {
@@ -304,15 +314,14 @@ class DataPreparator:
             general_nba_info_dict["seasons"][str(s_name)]["player_info"] = self.players_df[
                 self.players_df["Season"] == s_name]
 
-        if output_file is not None:
-            dir_path = os.path.dirname(os.path.realpath(__file__))
-            # "./../../data/processed/prepared_predictions_dict.pkl"
-            file_path = os.path.join(dir_path, output_file)
-
-            with open(file_path, "wb") as f:
-                pickle.dump(general_nba_info_dict, f)
-
         return general_nba_info_dict
+
+    def save_games_df(self):
+        print(f"Saving games df to file: {self.games_df_file_name} ...")
+        with open(self.games_df_file_name, "wb") as f:
+            pickle.dump(self.games_df, f)
+
+        print(f"Successfully saved to file!")
 
     def get_games_df_for_season(self, season_name):
         """
@@ -326,7 +335,7 @@ class DataPreparator:
         return deepcopy(self.general_data_dict["seasons"][season_name]["player_info"])
 
     def load_game_df(self):
-        games_df = load_game_data_zan(force_recompute=self.force_recompute)
+        games_df = load_game_data_zan(force_recompute=self.force_recompute_method_data)
         games_df["season_name"] = games_df["season_name"].str.replace("-", "-20")
 
         return games_df
