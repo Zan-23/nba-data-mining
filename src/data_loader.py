@@ -1035,6 +1035,8 @@ def add_recent_stats(game_data, recent_range=5):
         game_data[f"{team}_recent_home_game_ratio"] = 0
         game_data[f"{team}_recent_win_ratio"] = 0
         game_data[f"{team}_recent_points"] = 0
+        game_data[f"{team}_recent_timeout"] = 0
+        game_data[f"{team}_recent_TSP"] = 0.0
         for shot in ["fg","3PT","ft"]:
             for result in ["made","missed"]:
                 game_data[f"{team}_recent_{shot}_{result}"] = 0
@@ -1050,6 +1052,8 @@ def add_recent_stats(game_data, recent_range=5):
             game_data.at[i, f"{team}_recent_home_game_ratio"] = len(recent_games[recent_games["home_team_id"]==team_id]) / recent_window if recent_window>0 else 0
             game_data.at[i, f"{team}_recent_win_ratio"] = len(recent_games[((recent_games["visitor_team_id"]==team_id)&(recent_games["home_win"]==False))|((recent_games["home_team_id"]==team_id)&(recent_games["home_win"]==True))]) / recent_window if recent_window>0 else 0
             game_data.at[i, f"{team}_recent_points"] = (recent_games[recent_games["visitor_team_id"]==team_id]["visitor_final_score"].sum() + recent_games[recent_games["home_team_id"]==team_id]["home_final_score"].sum()) / recent_window if recent_window>0 else 0
+            game_data.at[i, f"{team}_recent_timeout"] = (recent_games[recent_games["visitor_team_id"]==team_id]["visitor_timeout"].sum() + recent_games[recent_games["home_team_id"]==team_id]["home_timeout"].sum()) / recent_window if recent_window>0 else 0
+            game_data.at[i, f"{team}_recent_TSP"] = float(float((recent_games[recent_games["visitor_team_id"]==team_id]["visitor_TSP"].sum() + recent_games[recent_games["home_team_id"]==team_id]["home_TSP"].sum())) / recent_window) if recent_window>0 else 0
             for shot in ["fg","3PT","ft"]:
                 for result in ["made","missed"]:
                     game_data.at[i, f"{team}_recent_{shot}_{result}"] = (recent_games[recent_games["visitor_team_id"]==team_id][f"visitor_{shot}_{result}"].sum() + recent_games[recent_games["home_team_id"]==team_id][f"home_{shot}_{result}"].sum()) / recent_window if recent_window>0 else 0
