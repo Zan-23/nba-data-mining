@@ -691,6 +691,11 @@ def load_game_data_zan(columns=None, seasons=None, path=RAW_DATA_PATH, force_rec
         games_df["home_final_score_diff"] = games_df["home_final_score"] - games_df["visitor_final_score"]
         games_df["visitor_final_score_diff"] = games_df["visitor_final_score"] - games_df["home_final_score"]
 
+        # most common lineups
+        print("Concatenating common lineups")
+        common_lineups = pd.read_pickle("../../data/processed/common_lineups.pkl")
+        games_df = pd.concat([games_df, common_lineups], axis=1)
+
         if len(games_df.index) < 1:
             raise Exception("Game data is non-existent! Check for bugs")
         else:
@@ -711,7 +716,8 @@ def load_game_data_zan(columns=None, seasons=None, path=RAW_DATA_PATH, force_rec
                            "visitor_scoring_leader", "visitor_scoring_leader_points",
                            "home_made_max_shot_distance", "visitor_made_max_shot_distance",
                            "home_made_min_shot_distance", "visitor_made_min_shot_distance",
-                           "visitor_record_losses", "games_already_played_in_season"]
+                           "visitor_record_losses", "games_already_played_in_season", 
+                           "home_common_lineup", "visitor_common_lineup"]
 
             games_df[int_columns] = games_df[int_columns].astype(int)
             # saving seasons arr to file, can be recomputed as single df
@@ -1041,13 +1047,13 @@ def add_recent_stats(game_data, recent_range=5):
             recent_games = games_by_team_id[team_id].loc[:i-1].tail(recent_range)
             recent_window = len(recent_games)
     
-            game_data.at[i, f"{team}_recent_home_game_ratio"] = len(recent_games[recent_games["home_team_id"]==team_id]) / recent_window if recent_window>0 else np.NAN
-            game_data.at[i, f"{team}_recent_win_ratio"] = len(recent_games[((recent_games["visitor_team_id"]==team_id)&(recent_games["home_win"]==False))|((recent_games["home_team_id"]==team_id)&(recent_games["home_win"]==True))]) / recent_window if recent_window>0 else np.NAN
-            game_data.at[i, f"{team}_recent_points"] = (recent_games[recent_games["visitor_team_id"]==team_id]["visitor_final_score"].sum() + recent_games[recent_games["home_team_id"]==team_id]["home_final_score"].sum()) / recent_window
+            game_data.at[i, f"{team}_recent_home_game_ratio"] = len(recent_games[recent_games["home_team_id"]==team_id]) / recent_window if recent_window>0 else 0
+            game_data.at[i, f"{team}_recent_win_ratio"] = len(recent_games[((recent_games["visitor_team_id"]==team_id)&(recent_games["home_win"]==False))|((recent_games["home_team_id"]==team_id)&(recent_games["home_win"]==True))]) / recent_window if recent_window>0 else 0
+            game_data.at[i, f"{team}_recent_points"] = (recent_games[recent_games["visitor_team_id"]==team_id]["visitor_final_score"].sum() + recent_games[recent_games["home_team_id"]==team_id]["home_final_score"].sum()) / recent_window if recent_window>0 else 0
             for shot in ["fg","3PT","ft"]:
                 for result in ["made","missed"]:
-                    game_data.at[i, f"{team}_recent_{shot}_{result}"] = (recent_games[recent_games["visitor_team_id"]==team_id][f"visitor_{shot}_{result}"].sum() + recent_games[recent_games["home_team_id"]==team_id][f"home_{shot}_{result}"].sum()) / recent_window
+                    game_data.at[i, f"{team}_recent_{shot}_{result}"] = (recent_games[recent_games["visitor_team_id"]==team_id][f"visitor_{shot}_{result}"].sum() + recent_games[recent_games["home_team_id"]==team_id][f"home_{shot}_{result}"].sum()) / recent_window if recent_window>0 else 0
             for feature in ["players_deployed","rebound","turnover","foul"]:
-                    game_data.at[i, f"{team}_recent_{feature}"] = (recent_games[recent_games["visitor_team_id"]==team_id][f"visitor_{feature}"].sum() + recent_games[recent_games["home_team_id"]==team_id][f"home_{feature}"].sum()) / recent_window
+                    game_data.at[i, f"{team}_recent_{feature}"] = (recent_games[recent_games["visitor_team_id"]==team_id][f"visitor_{feature}"].sum() + recent_games[recent_games["home_team_id"]==team_id][f"home_{feature}"].sum()) / recent_window if recent_window>0 else 0
     return game_data
 
