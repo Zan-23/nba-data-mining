@@ -1024,6 +1024,10 @@ def add_season_rankings(game_data, convert_str=True):
 
     game_data.loc[game_data["season_name"] == 2000, "home_rank"] = 0
     game_data.loc[game_data["season_name"] == 2000, "visitor_rank"] = 0
+
+    game_data.loc[game_data["home_rank"] > 50, "home_rank"] = 0
+    game_data.loc[game_data["visitor_rank"] > 50, "visitor_rank"] = 0
+
     game_data["home_rank"] = game_data["home_rank"].astype(int)
     game_data["visitor_rank"] = game_data["visitor_rank"].astype(int)
     return game_data
