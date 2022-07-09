@@ -987,44 +987,47 @@ def player_data_convert_to_metric_units(player_df, remove_nan_rows=False):
     return preprocessed_df
 
 
-def add_extra_player_features_gregor(player_df, lineups_df):
+def add_season_rankings(game_data, convert_str=True):
     """
-    Adds extra features to the player data. (TODO @gregor add extra info)
+    adds rankings of last season to the games of current season
 
-    :param player_df:
-    :param lineups_df:
-    :return:
+    :param game_data: Dataframe with game data.
+    :param convert_str: Boolean. If True, converts season_name from string to int.
+    :return: A modified dataframe.
     """
-    temp_lineups = pd.DataFrame()
-    temp_player_df = deepcopy(player_df)
+    if convert_str:
+        game_data["season_name"] = game_data["season_name"].str.split("-").str[0].astype(int)
 
-    # Add season string to every lineup row
-    temp_lineups["season"] = lineups_df["game_id"].astype(str).str[1:3].apply(lambda x: f"20{x}-20{int(x) + 1:02d}")
+    max_games = game_data[["games_already_played_in_season", "season_name"]].groupby("season_name").max()
 
-    # This can be optimized if needed
-    temp_player_df["games_started"] = temp_player_df.apply(lambda x:
-                                                           (temp_lineups[(temp_lineups["season"] == x["Season"]) & (
-                                                                   (temp_lineups["home_player1_id"] == x["Player ID"]) |
-                                                                   (temp_lineups["home_player2_id"] == x["Player ID"]) |
-                                                                   (temp_lineups["home_player3_id"] == x["Player ID"]) |
-                                                                   (temp_lineups["home_player4_id"] == x["Player ID"]) |
-                                                                   (temp_lineups["home_player5_id"] == x["Player ID"]) |
-                                                                   (temp_lineups["visitor_player1_id"] == x[
-                                                                       "Player ID"]) |
-                                                                   (temp_lineups["visitor_player2_id"] == x[
-                                                                       "Player ID"]) |
-                                                                   (temp_lineups["visitor_player3_id"] == x[
-                                                                       "Player ID"]) |
-                                                                   (temp_lineups["visitor_player4_id"] == x[
-                                                                       "Player ID"]) |
-                                                                   (temp_lineups["visitor_player5_id"] == x[
-                                                                       "Player ID"]))]["game_id"].count()), axis=1)
-    return temp_player_df
+    for year in range(2000, 2018):
 
+        home_teams = game_data[(game_data["season_name"] == year) & 
+                    ((game_data["home_record_wins"] + game_data["home_record_losses"]) == max_games.loc[year]["games_already_played_in_season"])][["home_team_id", "home_record_wins", "home_record_losses"]]
 
-def load_lineups():
-    # TODO @gregor do this
-    pass
+        visitor_teams = game_data[(game_data["season_name"] == year) & 
+                    ((game_data["visitor_record_wins"] + game_data["visitor_record_losses"]) == max_games.loc[year]["games_already_played_in_season"])][["visitor_team_id", "visitor_record_wins", "visitor_record_losses"]]
+
+        home_teams.rename(columns = {'home_team_id':'team_id', 'home_record_wins':'record_wins', "home_record_losses":"record_losses"}, inplace = True)
+        visitor_teams.rename(columns = {'visitor_team_id':'team_id', 'visitor_record_wins':'record_wins', "visitor_record_losses":"record_losses"}, inplace = True)
+
+        teams = (home_teams.append(visitor_teams)).sort_values(by=["record_wins"])
+        teams["rank"] = (teams["record_wins"].rank(method="dense", ascending=False)).astype(int)
+        ranks = teams[["team_id", "rank"]]
+
+        game_data.loc[game_data["season_name"] == year+1, "home_rank"] = game_data["home_team_id"].copy()
+        game_data.loc[game_data["season_name"] == year+1, "visitor_rank"] = game_data["visitor_team_id"].copy()
+
+        rename_dict = ranks.set_index("team_id").to_dict()['rank']
+        game_data.loc[game_data["season_name"] == year+1, "home_rank"] = game_data.loc[game_data["season_name"] == year+1]["home_rank"].replace(rename_dict).copy()
+        game_data.loc[game_data["season_name"] == year+1, "visitor_rank"] = game_data.loc[game_data["season_name"] == year+1]["visitor_rank"].replace(rename_dict).copy()
+
+    game_data.loc[game_data["season_name"] == 2000, "home_rank"] = 0
+    game_data.loc[game_data["season_name"] == 2000, "visitor_rank"] = 0
+    game_data["home_rank"] = game_data["home_rank"].astype(int)
+    game_data["visitor_rank"] = game_data["visitor_rank"].astype(int)
+    return game_data
+
 
 def add_recent_stats(game_data, recent_range=5):
     game_data = game_data.copy().sort_index().reset_index()
