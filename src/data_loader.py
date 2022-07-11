@@ -691,6 +691,11 @@ def load_game_data_zan(columns=None, seasons=None, path=RAW_DATA_PATH, force_rec
         games_df["home_final_score_diff"] = games_df["home_final_score"] - games_df["visitor_final_score"]
         games_df["visitor_final_score_diff"] = games_df["visitor_final_score"] - games_df["home_final_score"]
 
+        # most common lineups
+        print("Concatenating common lineups")
+        common_lineups = pd.read_pickle("../../data/processed/common_lineups.pkl")
+        games_df = pd.concat([games_df, common_lineups], axis=1)
+
         if len(games_df.index) < 1:
             raise Exception("Game data is non-existent! Check for bugs")
         else:
@@ -711,7 +716,8 @@ def load_game_data_zan(columns=None, seasons=None, path=RAW_DATA_PATH, force_rec
                            "visitor_scoring_leader", "visitor_scoring_leader_points",
                            "home_made_max_shot_distance", "visitor_made_max_shot_distance",
                            "home_made_min_shot_distance", "visitor_made_min_shot_distance",
-                           "visitor_record_losses", "games_already_played_in_season"]
+                           "visitor_record_losses", "games_already_played_in_season", 
+                           "home_common_lineup", "visitor_common_lineup"]
 
             games_df[int_columns] = games_df[int_columns].astype(int)
             # saving seasons arr to file, can be recomputed as single df
@@ -981,44 +987,51 @@ def player_data_convert_to_metric_units(player_df, remove_nan_rows=False):
     return preprocessed_df
 
 
-def add_extra_player_features_gregor(player_df, lineups_df):
+def add_season_rankings(game_data, convert_str=True):
     """
-    Adds extra features to the player data. (TODO @gregor add extra info)
+    adds rankings of last season to the games of current season
 
-    :param player_df:
-    :param lineups_df:
-    :return:
+    :param game_data: Dataframe with game data.
+    :param convert_str: Boolean. If True, converts season_name from string to int.
+    :return: A modified dataframe.
     """
-    temp_lineups = pd.DataFrame()
-    temp_player_df = deepcopy(player_df)
+    if convert_str:
+        game_data["season_name"] = game_data["season_name"].str.split("-").str[0].astype(int)
 
-    # Add season string to every lineup row
-    temp_lineups["season"] = lineups_df["game_id"].astype(str).str[1:3].apply(lambda x: f"20{x}-20{int(x) + 1:02d}")
+    max_games = game_data[["games_already_played_in_season", "season_name"]].groupby("season_name").max()
 
-    # This can be optimized if needed
-    temp_player_df["games_started"] = temp_player_df.apply(lambda x:
-                                                           (temp_lineups[(temp_lineups["season"] == x["Season"]) & (
-                                                                   (temp_lineups["home_player1_id"] == x["Player ID"]) |
-                                                                   (temp_lineups["home_player2_id"] == x["Player ID"]) |
-                                                                   (temp_lineups["home_player3_id"] == x["Player ID"]) |
-                                                                   (temp_lineups["home_player4_id"] == x["Player ID"]) |
-                                                                   (temp_lineups["home_player5_id"] == x["Player ID"]) |
-                                                                   (temp_lineups["visitor_player1_id"] == x[
-                                                                       "Player ID"]) |
-                                                                   (temp_lineups["visitor_player2_id"] == x[
-                                                                       "Player ID"]) |
-                                                                   (temp_lineups["visitor_player3_id"] == x[
-                                                                       "Player ID"]) |
-                                                                   (temp_lineups["visitor_player4_id"] == x[
-                                                                       "Player ID"]) |
-                                                                   (temp_lineups["visitor_player5_id"] == x[
-                                                                       "Player ID"]))]["game_id"].count()), axis=1)
-    return temp_player_df
+    for year in range(2000, 2018):
 
+        home_teams = game_data[(game_data["season_name"] == year) & 
+                    ((game_data["home_record_wins"] + game_data["home_record_losses"]) == max_games.loc[year]["games_already_played_in_season"])][["home_team_id", "home_record_wins", "home_record_losses"]]
 
-def load_lineups():
-    # TODO @gregor do this
-    pass
+        visitor_teams = game_data[(game_data["season_name"] == year) & 
+                    ((game_data["visitor_record_wins"] + game_data["visitor_record_losses"]) == max_games.loc[year]["games_already_played_in_season"])][["visitor_team_id", "visitor_record_wins", "visitor_record_losses"]]
+
+        home_teams.rename(columns = {'home_team_id':'team_id', 'home_record_wins':'record_wins', "home_record_losses":"record_losses"}, inplace = True)
+        visitor_teams.rename(columns = {'visitor_team_id':'team_id', 'visitor_record_wins':'record_wins', "visitor_record_losses":"record_losses"}, inplace = True)
+
+        teams = (home_teams.append(visitor_teams)).sort_values(by=["record_wins"])
+        teams["rank"] = (teams["record_wins"].rank(method="dense", ascending=False)).astype(int)
+        ranks = teams[["team_id", "rank"]]
+
+        game_data.loc[game_data["season_name"] == year+1, "home_rank"] = game_data["home_team_id"].copy()
+        game_data.loc[game_data["season_name"] == year+1, "visitor_rank"] = game_data["visitor_team_id"].copy()
+
+        rename_dict = ranks.set_index("team_id").to_dict()['rank']
+        game_data.loc[game_data["season_name"] == year+1, "home_rank"] = game_data.loc[game_data["season_name"] == year+1]["home_rank"].replace(rename_dict).copy()
+        game_data.loc[game_data["season_name"] == year+1, "visitor_rank"] = game_data.loc[game_data["season_name"] == year+1]["visitor_rank"].replace(rename_dict).copy()
+
+    game_data.loc[game_data["season_name"] == 2000, "home_rank"] = 0
+    game_data.loc[game_data["season_name"] == 2000, "visitor_rank"] = 0
+
+    game_data.loc[game_data["home_rank"] > 50, "home_rank"] = 0
+    game_data.loc[game_data["visitor_rank"] > 50, "visitor_rank"] = 0
+
+    game_data["home_rank"] = game_data["home_rank"].astype(int)
+    game_data["visitor_rank"] = game_data["visitor_rank"].astype(int)
+    return game_data
+
 
 def add_recent_stats(game_data, recent_range=5):
     game_data = game_data.copy().sort_index().reset_index()
@@ -1029,6 +1042,8 @@ def add_recent_stats(game_data, recent_range=5):
         game_data[f"{team}_recent_home_game_ratio"] = 0
         game_data[f"{team}_recent_win_ratio"] = 0
         game_data[f"{team}_recent_points"] = 0
+        game_data[f"{team}_recent_timeout"] = 0
+        game_data[f"{team}_recent_TSP"] = 0.0
         for shot in ["fg","3PT","ft"]:
             for result in ["made","missed"]:
                 game_data[f"{team}_recent_{shot}_{result}"] = 0
@@ -1041,13 +1056,15 @@ def add_recent_stats(game_data, recent_range=5):
             recent_games = games_by_team_id[team_id].loc[:i-1].tail(recent_range)
             recent_window = len(recent_games)
     
-            game_data.at[i, f"{team}_recent_home_game_ratio"] = len(recent_games[recent_games["home_team_id"]==team_id]) / recent_window if recent_window>0 else np.NAN
-            game_data.at[i, f"{team}_recent_win_ratio"] = len(recent_games[((recent_games["visitor_team_id"]==team_id)&(recent_games["home_win"]==False))|((recent_games["home_team_id"]==team_id)&(recent_games["home_win"]==True))]) / recent_window if recent_window>0 else np.NAN
-            game_data.at[i, f"{team}_recent_points"] = (recent_games[recent_games["visitor_team_id"]==team_id]["visitor_final_score"].sum() + recent_games[recent_games["home_team_id"]==team_id]["home_final_score"].sum()) / recent_window
+            game_data.at[i, f"{team}_recent_home_game_ratio"] = len(recent_games[recent_games["home_team_id"]==team_id]) / recent_window if recent_window>0 else 0
+            game_data.at[i, f"{team}_recent_win_ratio"] = len(recent_games[((recent_games["visitor_team_id"]==team_id)&(recent_games["home_win"]==False))|((recent_games["home_team_id"]==team_id)&(recent_games["home_win"]==True))]) / recent_window if recent_window>0 else 0
+            game_data.at[i, f"{team}_recent_points"] = (recent_games[recent_games["visitor_team_id"]==team_id]["visitor_final_score"].sum() + recent_games[recent_games["home_team_id"]==team_id]["home_final_score"].sum()) / recent_window if recent_window>0 else 0
+            game_data.at[i, f"{team}_recent_timeout"] = (recent_games[recent_games["visitor_team_id"]==team_id]["visitor_timeout"].sum() + recent_games[recent_games["home_team_id"]==team_id]["home_timeout"].sum()) / recent_window if recent_window>0 else 0
+            game_data.at[i, f"{team}_recent_TSP"] = float(float((recent_games[recent_games["visitor_team_id"]==team_id]["visitor_TSP"].sum() + recent_games[recent_games["home_team_id"]==team_id]["home_TSP"].sum())) / recent_window) if recent_window>0 else 0
             for shot in ["fg","3PT","ft"]:
                 for result in ["made","missed"]:
-                    game_data.at[i, f"{team}_recent_{shot}_{result}"] = (recent_games[recent_games["visitor_team_id"]==team_id][f"visitor_{shot}_{result}"].sum() + recent_games[recent_games["home_team_id"]==team_id][f"home_{shot}_{result}"].sum()) / recent_window
+                    game_data.at[i, f"{team}_recent_{shot}_{result}"] = (recent_games[recent_games["visitor_team_id"]==team_id][f"visitor_{shot}_{result}"].sum() + recent_games[recent_games["home_team_id"]==team_id][f"home_{shot}_{result}"].sum()) / recent_window if recent_window>0 else 0
             for feature in ["players_deployed","rebound","turnover","foul"]:
-                    game_data.at[i, f"{team}_recent_{feature}"] = (recent_games[recent_games["visitor_team_id"]==team_id][f"visitor_{feature}"].sum() + recent_games[recent_games["home_team_id"]==team_id][f"home_{feature}"].sum()) / recent_window
+                    game_data.at[i, f"{team}_recent_{feature}"] = (recent_games[recent_games["visitor_team_id"]==team_id][f"visitor_{feature}"].sum() + recent_games[recent_games["home_team_id"]==team_id][f"home_{feature}"].sum()) / recent_window if recent_window>0 else 0
     return game_data
 
