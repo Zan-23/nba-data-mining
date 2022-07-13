@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 from sklearn import preprocessing
 
-from src.data_loader import load_game_data_zan
+from src.data_loader import load_game_data_zan, add_season_rankings
 from sklearn.preprocessing import LabelEncoder, OneHotEncoder
 
 
@@ -46,7 +46,7 @@ class DataPreparator:
         self.x_home_cols, self.x_visit_cols = None, None
 
     @staticmethod
-    def add_recent_stats(game_data, recent_range=10):
+    def add_recent_stats(game_data, recent_range=15):
         print("\nAdding recent stats to the dataframe...")
         game_data = game_data.copy().sort_index().reset_index()
         unique_team_ids = set(game_data["visitor_team_id"].to_list())
@@ -147,7 +147,8 @@ class DataPreparator:
                            "home_recent_fg_missed", "home_recent_3PT_made",
                            "home_recent_3PT_missed", "home_recent_ft_made",
                            "home_recent_ft_missed", "home_recent_players_deployed",
-                           "home_recent_rebound", "home_recent_turnover", "home_recent_foul"]
+                           "home_recent_rebound", "home_recent_turnover", "home_recent_foul",
+                           "home_common_lineup", "home_rank"]    # "home_common_lineup", "home_rank"
 
             x_visit_cols = ["visitor_team_id", "visitor_recent_TSP", "visitor_final_score_diff",
                             "visitor_recent_home_game_ratio", "visitor_recent_win_ratio",
@@ -155,7 +156,8 @@ class DataPreparator:
                             "visitor_recent_fg_missed", "visitor_recent_3PT_made",
                             "visitor_recent_3PT_missed", "visitor_recent_ft_made",
                             "visitor_recent_ft_missed", "visitor_recent_players_deployed",
-                            "visitor_recent_rebound", "visitor_recent_turnover", "visitor_recent_foul"]
+                            "visitor_recent_rebound", "visitor_recent_turnover", "visitor_recent_foul",
+                            "visitor_common_lineup", "visitor_rank"]   # "visitor_common_lineup", "visitor_rank"
             print(f"\nColumns that will be used are of lengths: \n"
                   f"    - x_home_cols: {len(x_home_cols)}, \n"
                   f"    - x_visit_cols length: {len(x_visit_cols)}")
@@ -171,14 +173,14 @@ class DataPreparator:
                             "home_recent_fg_missed", "home_recent_3PT_made",
                             "home_recent_3PT_missed", "home_recent_ft_made",
                             "home_recent_ft_missed", "home_recent_players_deployed",
-                            "home_recent_rebound", "home_recent_turnover", "home_recent_foul"] \
+                            "home_recent_rebound", "home_recent_turnover", "home_recent_foul", "home_common_lineup", "home_rank"] \
                            + ["visitor_recent_TSP", "visitor_recent_home_game_ratio",
                               "visitor_recent_win_ratio",
                               "visitor_recent_points", "visitor_recent_fg_made",
                               "visitor_recent_fg_missed", "visitor_recent_3PT_made",
                               "visitor_recent_3PT_missed", "visitor_recent_ft_made",
                               "visitor_recent_ft_missed", "visitor_recent_players_deployed",
-                              "visitor_recent_rebound", "visitor_recent_turnover", "visitor_recent_foul"]
+                              "visitor_recent_rebound", "visitor_recent_turnover", "visitor_recent_foul", "visitor_common_lineup", "visitor_rank"]
 
         df_to_scale_arr = games_df[columns_to_scale].to_numpy()
         min_max_scaler = preprocessing.StandardScaler()
@@ -191,16 +193,20 @@ class DataPreparator:
             data_split = {"train": 0.8, "test": 0.1, "validation": 0.1}
         assert sum(data_split.values()) == 1, "Data split should sum to 1!"
 
-        curr_season_df = self.get_games_df_for_season(season)
-        # encoding string and ID variables to labels
-        curr_season_df["tip_off_winner"] = (curr_season_df["tip_off_winner"] == "HOME_PLAYER").astype(int)
-        curr_season_df["home_team_id"] = self.label_enc.fit_transform(curr_season_df["home_team_id"])
-        curr_season_df["visitor_team_id"] = self.label_enc.fit_transform(curr_season_df["visitor_team_id"])
-        curr_season_df["visitor_scoring_leader"] = self.label_enc.fit_transform(
-            curr_season_df["visitor_scoring_leader"])
-        curr_season_df["home_scoring_leader"] = self.label_enc.fit_transform(curr_season_df["home_scoring_leader"])
+        games_df = self.get_games_df()  # self.get_games_df_for_season(season)
+        games_df = add_season_rankings(games_df)
+        # games_df = games_df[games_df["season_name"] == 2017]
 
-        x_matrix, y_vector = self.prepare_x_matrix_and_y_vector(curr_season_df)
+        # encoding string and ID variables to labels
+        games_df["tip_off_winner"] = (games_df["tip_off_winner"] == "HOME_PLAYER").astype(int)
+        games_df["home_team_id"] = self.label_enc.fit_transform(games_df["home_team_id"])
+        games_df["visitor_team_id"] = self.label_enc.fit_transform(games_df["visitor_team_id"])
+        games_df["visitor_scoring_leader"] = self.label_enc.fit_transform(
+            games_df["visitor_scoring_leader"])
+        games_df["home_scoring_leader"] = self.label_enc.fit_transform(games_df["home_scoring_leader"])
+        games_df = games_df.fillna(0)
+
+        x_matrix, y_vector, columns = self.prepare_x_matrix_and_y_vector(games_df)
 
         # splitting the data into train, test and validation
         data_len = len(x_matrix)
@@ -218,13 +224,13 @@ class DataPreparator:
         self.x_val = x_matrix[train_len + test_len:]
         self.y_val = y_vector[train_len + test_len:]
 
-        return x_train, y_train, x_test, y_test
+        return x_train, y_train, x_test, y_test, columns
 
     def prepare_x_matrix_and_y_vector(self, games_df, split_game_in_two_data_p=False, normalize_columns=True):
         self.x_home_cols, self.x_visit_cols = self.select_columns_for_predictions()
 
-        assert len(self.x_home_cols) == len(self.x_visit_cols), "x_home_cols and x_visit_cols should have the same " \
-                                                                "length! "
+        # assert len(self.x_home_cols) == len(self.x_visit_cols), "x_home_cols and x_visit_cols should have the same " \
+        #                                                         "length! "
         if normalize_columns:
             self.normalize_columns(games_df)
 
@@ -267,7 +273,7 @@ class DataPreparator:
         if x_matrix_arr is None or y_vector_arr is None:
             raise Exception("Unexpected error, x_matrix_arr or y_vector_arr is None!")
 
-        return x_matrix_arr, y_vector_arr
+        return x_matrix_arr, y_vector_arr, self.x_home_cols + self.x_visit_cols
 
     def prepare_query_dict_structure(self):
         """
@@ -352,7 +358,10 @@ class DataPreparator:
         return players_df
 
     def get_games_df(self):
-        return self.games_df
+        return deepcopy(self.games_df)
 
     def get_players_df(self):
         return self.players_df
+
+    def get_validation_set(self):
+        return self.x_val, self.y_val

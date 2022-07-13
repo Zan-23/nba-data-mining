@@ -8,6 +8,7 @@ __pycache__
 # Ignore data
 *.csv
 *.pkl
+/notebooks/zan/log/*
 
 # Mac/OSX
 .DS_Store
