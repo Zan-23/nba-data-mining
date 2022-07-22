@@ -1,5 +1,6 @@
 import os
 import random
+import sys
 import time
 from datetime import datetime
 
@@ -40,8 +41,9 @@ def retrieve_data_urls_with_file_names():
         if h_ref_value.endswith("pbp.csv") and "events" not in h_ref_value and "matthew" not in h_ref_value:
             current_url = NBA_PAGE_URL + h_ref_value.strip()
             data_urls_arr.append((current_url, h_ref_value.rsplit("/")[-1]))
-        else:
-            print(f"{link} is not a pbp.csv file")
+        # Can be uncommented for debugging
+        # else:
+        #    print(f"{link} is not a pbp.csv file")
 
     # Hardcoded number of files to download, it shouldn't change during the analysis
     if len(data_urls_arr) != 19:
@@ -89,7 +91,7 @@ def download_and_save_url_data(data_urls_arr):
     print(f"\nFinished data download in {execution_time}")
 
 
-def get_player_info_season_urls():
+def get_player_info_season_urls(season_start=2000, season_end=2020):
     """
     Method generates all the urls that contain data about players for seasons 2000-2020.
     :return: Array of tuples. First element is the season (2002-2003) and the second values is the URL.
@@ -98,14 +100,14 @@ def get_player_info_season_urls():
 
     url_arr = []
     # get all urls from 2000 to 2019
-    for i in range(2000, 2019):
+    for i in range(season_start, season_end):
         season = f"{i}-{str(i+1)[2:]}"
         url = f"{BASE_NBA_URL}?Season={season}&SeasonType=Regular%20Season&PerMode=Totals"
         url_arr.append((season, url))
     return url_arr
 
 
-def scrape_player_bios_and_save_to_csv():
+def scrape_player_bios_and_save_to_csv(season_start, season_end):
     """
     Function scrapes the player bios from multiple urls, combines the information to dataframes, combines the dataframes
     for all seasons and save the information to a csv file.
@@ -116,11 +118,11 @@ def scrape_player_bios_and_save_to_csv():
     dir_path = f"{DATA_RAW_FOLDER}player-data"
     start_time = time.time()
 
-    print(f"Started scraper for play info from '{BASE_NBA_URL}' website for season 2000-2020")
+    print(f"Started scraper for player info from '{BASE_NBA_URL}' website for season 2000-2020")
     if os.path.isdir(dir_path) is False:
         raise Exception(f"{dir_path} folder does not exist, but it should!")
     output_csv_file = f"{dir_path}/player_info.csv"
-    url_arr = get_player_info_season_urls()
+    url_arr = get_player_info_season_urls(season_start, season_end)
 
     main_df = pd.DataFrame()
     # Doesn't work with headless chrome, so we need to use a real browser, version 102 of chrome is needed
@@ -182,19 +184,80 @@ def scrape_player_bios_and_save_to_csv():
     print(f"\nWhole scraping & saving process finished in {round(time.time() - start_time, 2)} seconds")
 
 
+def parse_input_parameters():
+    """
+    Function parses the input parameters and returns a dictionary with prepared parameters.
+    :return: Dictionary. It has the following structure:
+    {
+        "--player_data": Boolean. If true player data will be downloaded,
+        "--player_data_season_start": Integer. Indicates the first season for which we want to download the player data,
+        "--player_data_season_end": Integer. Indicates the last season for which we want to download the player data,
+    }
+    """
+    print("\nStarted parsing input arguments ...")
+    first_available_season_k = "--p_data_season_start"
+    last_available_season_k = "--p_data_season_end"
+
+    # 1996 is the first season that has data, for the sake of analysis 2000 is used as default
+    param_dict = {
+        "--player_data": False,
+        first_available_season_k: 2000,
+        last_available_season_k: 2020,
+    }
+    arg_len = len(sys.argv)
+
+    if arg_len > 1:
+        if sys.argv[1] == "--player_data":
+            param_dict["--player_data"] = True
+        else:
+            raise Exception("Unknown argument, please use --player_data as the first argument or remove your flag!")
+
+    if arg_len > 2:
+        if sys.argv[2].startswith(first_available_season_k + "="):
+            starting_season = int(sys.argv[2].split("=")[1])
+
+            if param_dict[first_available_season_k] <= starting_season <= param_dict[last_available_season_k]:
+                param_dict[first_available_season_k] = starting_season
+            else:
+                raise Exception(f"Season {starting_season} is not available, please choose a season between "
+                                f"{param_dict[first_available_season_k]} and {param_dict[last_available_season_k]}!")
+        else:
+            raise Exception("Unknown argument, please use --p_data_season_start=<season> as the second argument "
+                            "or remove your flag!")
+    if arg_len > 3:
+        if sys.argv[3].startswith(last_available_season_k + "="):
+            end_season = int(sys.argv[3].split("=")[1])
+
+            if param_dict[first_available_season_k] < end_season <= param_dict[last_available_season_k]:
+                param_dict[last_available_season_k] = end_season
+            else:
+                raise Exception(f"Season {end_season} is not available, please choose a season between "
+                                f"{param_dict[first_available_season_k]} and {param_dict[last_available_season_k]}!")
+        else:
+            raise Exception("Unknown argument, please use --p_data_season_end=<season> as the third argument"
+                            " or remove your flag!")
+
+    print(f"Finished parsing input arguments, the following parameters were given: \n{param_dict}\n")
+    return param_dict
+
+
 def scraper_main():
-    # Code concerning the csv download
-    # get urls from the data page
+    param_dict = parse_input_parameters()
+
+    print("Started scraping websites for data ...")
+    # Code concerning play-by-play data
     data_urls_arr = retrieve_data_urls_with_file_names()
     # download and save the data
     download_and_save_url_data(data_urls_arr)
 
-    # Code that scrapes the player bios
-    scrape_player_bios_and_save_to_csv()
-    print(f"End")
+    # If flag is given also scrape player data
+    if param_dict["--player_data"]:
+        # Code that scrapes the player bios
+        scrape_player_bios_and_save_to_csv(season_start=param_dict["--p_data_season_start"],
+                                           season_end=param_dict["--p_data_season_end"])
+
+    print(f"Ended data scraping, please check the folder '{DATA_RAW_FOLDER}' for the data files.")
 
 
 if __name__ == "__main__":
-    scrape_player_bios_and_save_to_csv()
-
-    # scraper_main()
+    scraper_main()
