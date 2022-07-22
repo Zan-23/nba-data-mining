@@ -1,5 +1,8 @@
 #  NBA Play-by-Play Data mining analysis
 
+![](data/readme_header.png)
+
+
 In the scope of the Data mining praktikum at Technische Universität München (TUM), we analysed NBA play-by-play data,
 as well as player information data which we manually acquired by scraping from the web.   
 
@@ -15,11 +18,11 @@ The team was made by us 4 students:
 - Žan Stanonik (Zan-23)
 
 # Table of Contents
-1. [Getting started](#Getting started)
-   1. [Environment setup](#Environment setup)
-   2. [Data download](#Data download)
-2. [Data sources](#Data sources )
-3. [Presentation of project findings](#fourth-examplehttpwwwfourthexamplecom)
+1. [Getting started](#Getting-started)
+   1. [Environment setup](#Environment-setup)
+   2. [Data download](#Data-download)
+2. [Data sources](#Data-sources)
+3. [Presentation of project findings](#Presentation-of-project-findings)
 
 # Getting started
 ## Environment setup
