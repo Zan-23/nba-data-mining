@@ -143,7 +143,7 @@ class EntropyOptimizer:
         number_of_genes: An integer representing the number of genes.
         mating_selection_strategy: A MatingSelectionStrategy object
             that defines the strategy used for mating.
-        reset_to_front_predicate: TODO
+        reset_to_front_predicate:
         initial_population: An optional attribute containing the
             population the algorithm starts with.
         initial_genes: An optional attribute containing a 2D array of

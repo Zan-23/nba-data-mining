@@ -83,9 +83,8 @@ def load_data(columns=None, seasons=None, path=RAW_DATA_PATH, resolve=True, sing
 
             # modifies dataframe in place
             get_distance(season)
-            # modifies type in place to be a category
-            # TODO comment it out if you want to use categories
-            # season[CATEGORIES_COLS_ARR] = season[CATEGORIES_COLS_ARR].astype("category")
+            # substantial data reduction can be achived if strings are converted to categories, but the processing
+            # is a lot harder then
             seasons_df_arr.append(season)
 
         if len(seasons_df_arr) == 0:
@@ -97,8 +96,6 @@ def load_data(columns=None, seasons=None, path=RAW_DATA_PATH, resolve=True, sing
 
         if single_df:
             concat_df = pd.concat(seasons_df_arr).reset_index(drop=True)
-            # TODO comment it out if you want to use categories
-            # concat_df[CATEGORIES_COLS_ARR] = concat_df[CATEGORIES_COLS_ARR].astype("category")
             return concat_df
         else:
             return seasons_df_arr
@@ -124,288 +121,12 @@ def get_distance(df):
         df['visitor_shot_distance'].isna()), 'visitor_shot_distance'] = 0
 
 
-# DEPRECATED TODO remove
-# def load_game_data(columns=None, seasons=None, path=RAW_DATA_PATH, force_recompute=True):
-#     GAME_ID_STR = "GAME_ID"
-#     dir_path = os.path.dirname(os.path.realpath(__file__))
-#     games_data_file = os.path.join(dir_path, "./../data/processed/load_data_games_arr_v1.pkl")
-#
-#     # reading from file or recomputing depending on the flags
-#     if not force_recompute and os.path.exists(games_data_file):
-#         print(f"Loading data from file {games_data_file} ...")
-#         with open(games_data_file, "rb") as file:
-#             game_data_df = pickle.load(file)
-#         print("Data loaded!")
-#         return game_data_df
-#     else:
-#         pbp_data_per_season = load_data(seasons=seasons, path=path, single_df=False)
-#         print("Loaded PBP-data")
-#         game_data_per_season = []
-#         for pbp_data in pbp_data_per_season:
-#             pbp_grouped = pbp_data.groupby(GAME_ID_STR)
-#
-#             # Create DataFrame with first column "play_count"
-#             game_data = pbp_grouped.size().to_frame(name="play_count")
-#             # Add arbitrarily many features:
-#
-#             # Season name is the same for all plays in a game: Just get first.
-#             game_data["season_name"] = pbp_grouped["season_name"].first()
-#             # Get date and start/end time would be nice.
-#
-#             # Visitor team:
-#             game_data["visitor_team_id"] = pbp_grouped.apply(
-#                 lambda x: x[x["PERSON1TYPE"] == 'VISITOR_PLAYER']["PLAYER1_TEAM_ID"].iloc[0])
-#             game_data["visitor_team_city"] = pbp_grouped.apply(
-#                 lambda x: x[x["PERSON1TYPE"] == 'VISITOR_PLAYER']["PLAYER1_TEAM_CITY"].iloc[0])
-#             game_data["visitor_team_nickname"] = pbp_grouped.apply(
-#                 lambda x: x[x["PERSON1TYPE"] == 'VISITOR_PLAYER']["PLAYER1_TEAM_NICKNAME"].iloc[0])
-#             game_data["visitor_record_wins"] = 0
-#             game_data["visitor_record_losses"] = 0
-#             # Score:
-#             game_data[["visitor_final_score", "home_final_score"]] = pbp_grouped.apply(
-#                 lambda x: x[~x["SCORE"].isna()]["SCORE"].str.split(" - ", expand=True).astype(
-#                     int).max())  # Complicated because in ca. 5 games the score column is messed up and out of order.
-#             game_data["home_win"] = game_data["visitor_final_score"] < game_data["home_final_score"]
-#             # Home team:
-#             game_data["home_team_id"] = pbp_grouped.apply(
-#                 lambda x: x[x["PERSON1TYPE"] == 'HOME_PLAYER']["PLAYER1_TEAM_ID"].iloc[0])
-#             game_data["home_team_city"] = pbp_grouped.apply(
-#                 lambda x: x[x["PERSON1TYPE"] == 'HOME_PLAYER']["PLAYER1_TEAM_CITY"].iloc[0])
-#             game_data["home_team_nickname"] = pbp_grouped.apply(
-#                 lambda x: x[x["PERSON1TYPE"] == 'HOME_PLAYER']["PLAYER1_TEAM_NICKNAME"].iloc[0])
-#             # Calculated later
-#             game_data["home_record_wins"] = 0
-#             game_data["home_record_losses"] = 0
-#
-#             # Number of periods played: >4 is overtime
-#             game_data["periods"] = pbp_grouped["PERIOD"].max()
-#             # Minutes played:
-#             game_data["minutes_played"] = 48 + (game_data["periods"] - 4) * 2.5
-#
-#             # Players deployed
-#             game_data["visitor_players_deployed"] = pbp_grouped.apply(lambda x: len(set.union(
-#                 *[set(x[x[f"PERSON{i}TYPE"] == "VISITOR_PLAYER"][f"PLAYER{i}_ID"].unique()) for i in range(1, 4)])))
-#             game_data["home_players_deployed"] = pbp_grouped.apply(lambda x: len(
-#                 set.union(
-#                     *[set(x[x[f"PERSON{i}TYPE"] == "HOME_PLAYER"][f"PLAYER{i}_ID"].unique()) for i in range(1, 4)])))
-#
-#             # Field goal stats
-#             game_data["visitor_fg_made"] = pbp_grouped.apply(
-#                 lambda x: (x["EVENTMSGTYPE"] == 'FIELD_GOAL_MADE') & (x["PERSON1TYPE"] == 'VISITOR_PLAYER')).groupby(
-#                 level=0).sum()
-#             game_data["visitor_fg_missed"] = pbp_grouped.apply(
-#                 lambda x: (x["EVENTMSGTYPE"] == 'FIELD_GOAL_MISSED') & (x["PERSON1TYPE"] == 'VISITOR_PLAYER')).groupby(
-#                 level=0).sum()
-#             game_data["visitor_3PT_made"] = pbp_grouped.apply(
-#                 lambda x: (x["EVENTMSGTYPE"] == 'FIELD_GOAL_MADE') & (x["PERSON1TYPE"] == 'VISITOR_PLAYER') & (
-#                     x["VISITORDESCRIPTION"].str.contains("3PT"))).groupby(level=0).sum()
-#             game_data["visitor_3PT_missed"] = pbp_grouped.apply(
-#                 lambda x: (x["EVENTMSGTYPE"] == 'FIELD_GOAL_MISSED') & (x["PERSON1TYPE"] == 'VISITOR_PLAYER') & (
-#                     x["VISITORDESCRIPTION"].str.contains("3PT"))).groupby(level=0).sum()
-#             game_data["home_fg_made"] = pbp_grouped.apply(
-#                 lambda x: (x["EVENTMSGTYPE"] == 'FIELD_GOAL_MADE') & (x["PERSON1TYPE"] == 'HOME_PLAYER')).groupby(
-#                 level=0).sum()
-#             game_data["home_fg_missed"] = pbp_grouped.apply(
-#                 lambda x: (x["EVENTMSGTYPE"] == 'FIELD_GOAL_MISSED') & (x["PERSON1TYPE"] == 'HOME_PLAYER')).groupby(
-#                 level=0).sum()
-#             game_data["home_3PT_made"] = pbp_grouped.apply(
-#                 lambda x: (x["EVENTMSGTYPE"] == 'FIELD_GOAL_MADE') & (x["PERSON1TYPE"] == 'HOME_PLAYER') & (
-#                     x["HOMEDESCRIPTION"].str.contains("3PT"))).groupby(level=0).sum()
-#             game_data["home_3PT_missed"] = pbp_grouped.apply(
-#                 lambda x: (x["EVENTMSGTYPE"] == 'FIELD_GOAL_MISSED') & (x["PERSON1TYPE"] == 'HOME_PLAYER') & (
-#                     x["HOMEDESCRIPTION"].str.contains("3PT"))).groupby(level=0).sum()
-#
-#             # Free throw stats
-#             game_data["visitor_ft_made"] = pbp_grouped.apply(
-#                 lambda x: (x["EVENTMSGTYPE"] == 'FREE_THROW') & (x["PERSON1TYPE"] == 'VISITOR_PLAYER') & (
-#                         x["VISITORDESCRIPTION"].str.contains("MISS") == False)).groupby(level=0).sum()
-#             game_data["visitor_ft_missed"] = pbp_grouped.apply(
-#                 lambda x: (x["EVENTMSGTYPE"] == 'FREE_THROW') & (x["PERSON1TYPE"] == 'VISITOR_PLAYER') & (
-#                     x["VISITORDESCRIPTION"].str.contains("MISS"))).groupby(level=0).sum()
-#             game_data["home_ft_made"] = pbp_grouped.apply(
-#                 lambda x: (x["EVENTMSGTYPE"] == 'FREE_THROW') & (x["PERSON1TYPE"] == 'HOME_PLAYER') & (
-#                         x["HOMEDESCRIPTION"].str.contains("MISS") == False)).groupby(level=0).sum()
-#             game_data["home_ft_missed"] = pbp_grouped.apply(
-#                 lambda x: (x["EVENTMSGTYPE"] == 'FREE_THROW') & (x["PERSON1TYPE"] == 'HOME_PLAYER') & (
-#                     x["HOMEDESCRIPTION"].str.contains("MISS"))).groupby(level=0).sum()
-#
-#             # Rebound stats:
-#             # Player rebounds the ball in live game
-#             game_data["visitor_rebound"] = pbp_grouped.apply(
-#                 lambda x: (x["EVENTMSGTYPE"] == 'REBOUND') & (x["PERSON1TYPE"] == 'VISITOR_PLAYER') & (
-#                         x["EVENTMSGACTIONTYPE"] == "live")).groupby(level=0).sum()
-#             game_data["home_rebound"] = pbp_grouped.apply(
-#                 lambda x: (x["EVENTMSGTYPE"] == 'REBOUND') & (x["PERSON1TYPE"] == 'HOME_PLAYER') & (
-#                         x["EVENTMSGACTIONTYPE"] == "live")).groupby(level=0).sum()
-#             # Team gets the ball if out of bounds
-#             game_data["visitor_team_rebound"] = pbp_grouped.apply(
-#                 lambda x: (x["EVENTMSGTYPE"] == 'REBOUND') & (x["PERSON1TYPE"] == 'VISITOR_TEAM') & (
-#                         x["EVENTMSGACTIONTYPE"] == "live")).groupby(level=0).sum()
-#             game_data["home_team_rebound"] = pbp_grouped.apply(
-#                 lambda x: (x["EVENTMSGTYPE"] == 'REBOUND') & (x["PERSON1TYPE"] == 'HOME_TEAM') & (
-#                         x["EVENTMSGACTIONTYPE"] == "live")).groupby(level=0).sum()
-#
-#             # Turnover stats:
-#             # Player turns the ball over: bad pass, offensive foul, ...
-#             game_data["visitor_turnover"] = pbp_grouped.apply(
-#                 lambda x: (x["EVENTMSGTYPE"] == 'TURNOVER') & (x["PERSON1TYPE"] == 'VISITOR_PLAYER')).groupby(
-#                 level=0).sum()
-#             game_data["home_turnover"] = pbp_grouped.apply(
-#                 lambda x: (x["EVENTMSGTYPE"] == 'TURNOVER') & (x["PERSON1TYPE"] == 'HOME_PLAYER')).groupby(
-#                 level=0).sum()
-#             # Team turn over: shot clock violation, 5 sec violation
-#             game_data["visitor_team_turnover"] = pbp_grouped.apply(
-#                 lambda x: (x["EVENTMSGTYPE"] == 'TURNOVER') & (x["PERSON1TYPE"] == 'VISITOR_TEAM')).groupby(
-#                 level=0).sum()
-#             game_data["home_team_turnover"] = pbp_grouped.apply(
-#                 lambda x: (x["EVENTMSGTYPE"] == 'TURNOVER') & (x["PERSON1TYPE"] == 'HOME_TEAM')).groupby(level=0).sum()
-#
-#             # Foul stats:
-#             game_data["visitor_foul"] = pbp_grouped.apply(
-#                 lambda x: (x["EVENTMSGTYPE"] == 'FOUL') & (x["PERSON1TYPE"] == 'VISITOR_PLAYER')).groupby(level=0).sum()
-#             game_data["home_foul"] = pbp_grouped.apply(
-#                 lambda x: (x["EVENTMSGTYPE"] == 'FOUL') & (x["PERSON1TYPE"] == 'HOME_PLAYER')).groupby(level=0).sum()
-#
-#             # Substitution stats:
-#             game_data["visitor_subs"] = pbp_grouped.apply(
-#                 lambda x: (x["EVENTMSGTYPE"] == 'SUBSTITUTION') & (x["PERSON1TYPE"] == 'VISITOR_PLAYER')).groupby(
-#                 level=0).sum()
-#             game_data["home_subs"] = pbp_grouped.apply(
-#                 lambda x: (x["EVENTMSGTYPE"] == 'SUBSTITUTION') & (x["PERSON1TYPE"] == 'HOME_PLAYER')).groupby(
-#                 level=0).sum()
-#
-#             # Timeout stats:
-#             game_data["visitor_timeout"] = pbp_grouped.apply(
-#                 lambda x: (x["EVENTMSGTYPE"] == 'TIMEOUT') & (x["PERSON1TYPE"] == 'VISITOR_TEAM')).groupby(
-#                 level=0).sum()
-#             game_data["home_timeout"] = pbp_grouped.apply(
-#                 lambda x: (x["EVENTMSGTYPE"] == 'TIMEOUT') & (x["PERSON1TYPE"] == 'HOME_TEAM')).groupby(level=0).sum()
-#
-#             # Jump ball stats:
-#             game_data["visitor_jump_balls_won"] = pbp_grouped.apply(
-#                 lambda x: (x["EVENTMSGTYPE"] == 'JUMP_BALL') & (x["PERSON3TYPE"] == 'VISITOR_PLAYER')).groupby(
-#                 level=0).sum()
-#             game_data["home_jump_balls_won"] = pbp_grouped.apply(
-#                 lambda x: (x["EVENTMSGTYPE"] == 'JUMP_BALL') & (x["PERSON3TYPE"] == 'HOME_PLAYER')).groupby(
-#                 level=0).sum()
-#             game_data["tip_off_winner"] = pbp_grouped.apply(
-#                 lambda x: x[x["EVENTMSGTYPE"] == 'JUMP_BALL']["PERSON3TYPE"].iloc[0] if 'JUMP_BALL' in x[
-#                     "EVENTMSGTYPE"].unique() else "UNKNOWN")
-#
-#             # Ejection stats:
-#             # Player on the court gets ejected
-#             game_data["visitor_ejection"] = pbp_grouped.apply(
-#                 lambda x: (x["EVENTMSGTYPE"] == 'EJECTION') & (x["PERSON1TYPE"] == 'VISITOR_PLAYER')).groupby(
-#                 level=0).sum()
-#             game_data["home_ejection"] = pbp_grouped.apply(
-#                 lambda x: (x["EVENTMSGTYPE"] == 'EJECTION') & (x["PERSON1TYPE"] == 'HOME_PLAYER')).groupby(
-#                 level=0).sum()
-#             # Non player gets ejected: coach etc.
-#             game_data["visitor_team_ejection"] = pbp_grouped.apply(
-#                 lambda x: (x["EVENTMSGTYPE"] == 'EJECTION') & (x["PERSON1TYPE"] == 'VISITOR_TEAM_FOUL')).groupby(
-#                 level=0).sum()
-#             game_data["home_team_ejection"] = pbp_grouped.apply(
-#                 lambda x: (x["EVENTMSGTYPE"] == 'EJECTION') & (x["PERSON1TYPE"] == 'HOME_TEAM_FOUL')).groupby(
-#                 level=0).sum()
-#
-#             # Player performance:
-#             # Points of scoring leader
-#             game_data["home_scoring_leader"] = pbp_grouped.apply(lambda x: (
-#                 (x[(x["EVENTMSGTYPE"] == 'FIELD_GOAL_MADE') & (x["HOMEDESCRIPTION"].str.contains('3PT')) & (
-#                         x["PERSON1TYPE"] == 'HOME_PLAYER')].groupby("PLAYER1_ID").size() * 3).add(
-#                     x[(x["EVENTMSGTYPE"] == 'FIELD_GOAL_MADE') & (
-#                             (x["HOMEDESCRIPTION"].str.contains('3PT')) == False) & (
-#                               x["PERSON1TYPE"] == 'HOME_PLAYER')].groupby("PLAYER1_ID").size() * 2, fill_value=0).add(
-#                     x[(x["EVENTMSGTYPE"] == 'FREE_THROW') & ((x["HOMEDESCRIPTION"].str.contains('MISS')) == False) & (
-#                             x["PERSON1TYPE"] == 'HOME_PLAYER')].groupby("PLAYER1_ID").size(), fill_value=0)
-#             ).idxmax())
-#             game_data["home_scoring_leader_points"] = pbp_grouped.apply(lambda x: (
-#                 (x[(x["EVENTMSGTYPE"] == 'FIELD_GOAL_MADE') & (x["HOMEDESCRIPTION"].str.contains('3PT')) & (
-#                         x["PERSON1TYPE"] == 'HOME_PLAYER')].groupby("PLAYER1_ID").size() * 3).add(
-#                     x[(x["EVENTMSGTYPE"] == 'FIELD_GOAL_MADE') & (
-#                             (x["HOMEDESCRIPTION"].str.contains('3PT')) == False) & (
-#                               x["PERSON1TYPE"] == 'HOME_PLAYER')].groupby("PLAYER1_ID").size() * 2, fill_value=0).add(
-#                     x[(x["EVENTMSGTYPE"] == 'FREE_THROW') & ((x["HOMEDESCRIPTION"].str.contains('MISS')) == False) & (
-#                             x["PERSON1TYPE"] == 'HOME_PLAYER')].groupby("PLAYER1_ID").size(), fill_value=0)
-#             ).max())
-#             game_data["visitor_scoring_leader"] = pbp_grouped.apply(lambda x: (
-#                 (x[(x["EVENTMSGTYPE"] == 'FIELD_GOAL_MADE') & (x["VISITORDESCRIPTION"].str.contains('3PT')) & (
-#                         x["PERSON1TYPE"] == 'VISITOR_PLAYER')].groupby("PLAYER1_ID").size() * 3).add(
-#                     x[(x["EVENTMSGTYPE"] == 'FIELD_GOAL_MADE') & (
-#                             (x["VISITORDESCRIPTION"].str.contains('3PT')) == False) & (
-#                               x["PERSON1TYPE"] == 'VISITOR_PLAYER')].groupby("PLAYER1_ID").size() * 2,
-#                     fill_value=0).add(
-#                     x[(x["EVENTMSGTYPE"] == 'FREE_THROW') & (
-#                             (x["VISITORDESCRIPTION"].str.contains('MISS')) == False) & (
-#                               x["PERSON1TYPE"] == 'VISITOR_PLAYER')].groupby("PLAYER1_ID").size(), fill_value=0)
-#             ).idxmax())
-#             game_data["visitor_scoring_leader_points"] = pbp_grouped.apply(lambda x: (
-#                 (x[(x["EVENTMSGTYPE"] == 'FIELD_GOAL_MADE') & (x["VISITORDESCRIPTION"].str.contains('3PT')) & (
-#                         x["PERSON1TYPE"] == 'VISITOR_PLAYER')].groupby("PLAYER1_ID").size() * 3).add(
-#                     x[(x["EVENTMSGTYPE"] == 'FIELD_GOAL_MADE') & (
-#                             (x["VISITORDESCRIPTION"].str.contains('3PT')) == False) & (
-#                               x["PERSON1TYPE"] == 'VISITOR_PLAYER')].groupby("PLAYER1_ID").size() * 2,
-#                     fill_value=0).add(
-#                     x[(x["EVENTMSGTYPE"] == 'FREE_THROW') & (
-#                             (x["VISITORDESCRIPTION"].str.contains('MISS')) == False) & (
-#                               x["PERSON1TYPE"] == 'VISITOR_PLAYER')].groupby("PLAYER1_ID").size(), fill_value=0)
-#             ).max())
-#
-#             # Shooting Distance information
-#             # Max and min distance
-#             game_data["home_made_max_shot_distance"] = pbp_grouped.apply(
-#                 lambda x: x[x["EVENTMSGTYPE"] == 'FIELD_GOAL_MADE']["home_shot_distance"].max())
-#             game_data["visitor_made_max_shot_distance"] = pbp_grouped.apply(
-#                 lambda x: x[x["EVENTMSGTYPE"] == 'FIELD_GOAL_MADE']["visitor_shot_distance"].max())
-#
-#             game_data["home_made_min_shot_distance"] = pbp_grouped.apply(
-#                 lambda x: x[x["EVENTMSGTYPE"] == 'FIELD_GOAL_MADE']["home_shot_distance"].min())
-#             game_data["visitor_made_min_shot_distance"] = pbp_grouped.apply(
-#                 lambda x: x[x["EVENTMSGTYPE"] == 'FIELD_GOAL_MADE']["visitor_shot_distance"].min())
-#
-#             game_data["home_made_mean_shot_distance"] = pbp_grouped.apply(
-#                 lambda x: x[x["EVENTMSGTYPE"] == 'FIELD_GOAL_MADE']["home_shot_distance"].mean())
-#             game_data["visitor_made_mean_shot_distance"] = pbp_grouped.apply(
-#                 lambda x: x[x["EVENTMSGTYPE"] == 'FIELD_GOAL_MADE']["visitor_shot_distance"].mean())
-#
-#             # Calculate record after game for both teams (total number of wins and losses for the season):
-#             wins_dict = {team: 0 for team in
-#                          set(game_data["visitor_team_id"].to_list() + game_data["home_team_id"].to_list())}
-#             losses_dict = wins_dict.copy()
-#             for i, row in game_data.iterrows():
-#                 if row["home_win"]:
-#                     wins_dict[row["home_team_id"]] += 1
-#                     losses_dict[row["visitor_team_id"]] += 1
-#                 else:
-#                     wins_dict[row["visitor_team_id"]] += 1
-#                     losses_dict[row["home_team_id"]] += 1
-#                 game_data.at[i, "home_record_wins"] = wins_dict[row["home_team_id"]]
-#                 game_data.at[i, "home_record_losses"] = losses_dict[row["home_team_id"]]
-#                 game_data.at[i, "visitor_record_wins"] = wins_dict[row["visitor_team_id"]]
-#                 game_data.at[i, "visitor_record_losses"] = losses_dict[row["visitor_team_id"]]
-#
-#             game_data_per_season.append(game_data)
-#             print(f"Calculated game data for the {pbp_data['season_name'][0]} season", end="\r")
-#
-#         if game_data_per_season is None:
-#             raise Exception("Game data is non-existent! Check for bugs")
-#         else:
-#             game_data_per_season = pd.concat(game_data_per_season)
-#             # saving seasons arr to file, can be recomputed as single df
-#             print("Saving to file ...")
-#             with open(games_data_file, "wb") as file:
-#                 pickle.dump(game_data_per_season, file)
-#             print("Saved dataframe as file!")
-#             return game_data_per_season
-
-
-def load_game_data_zan(columns=None, seasons=None, path=RAW_DATA_PATH, force_recompute=True,
-                       out_f_name="./../data/processed/load_data_games_arr_v2_zan.pkl"):
+def load_game_data(columns=None, seasons=None, path=RAW_DATA_PATH, force_recompute=True,
+                   out_f_name="./../data/processed/load_data_games_arr_v2_zan.pkl"):
     """
     Method loops through all the seasons and games and calculates per game metrics.
-    TODO finish documentation
 
-    :param columns:
+    :param columns: TODO - add description
     :param seasons:
     :param path:
     :param force_recompute:
@@ -896,7 +617,6 @@ def load_player_data_optimized(columns=None, seasons=None, path=RAW_DATA_PATH, p
         player_data["3PT_missed"] = player_data["3PT_missed"].fillna(0).astype(int)
 
         # Free throw stats:
-        # TODO why is only one negated?
         mask_desc_miss = [(pbp_grouped_pID1["VISITORDESCRIPTION"].str.contains("MISS").fillna(False))
                           | (pbp_grouped_pID1["HOMEDESCRIPTION"].str.contains("MISS").fillna(False))]
         player_data["ft_made"] = pbp_grouped_pID1[(pbp_grouped_pID1["EVENTMSGTYPE"] == 'FREE_THROW') &

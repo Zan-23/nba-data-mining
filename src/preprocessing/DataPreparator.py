@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 from sklearn import preprocessing
 
-from src.data_loader import load_game_data_zan, add_season_rankings
+from src.data_loader import load_game_data, add_season_rankings
 from sklearn.preprocessing import LabelEncoder, OneHotEncoder
 
 
@@ -111,7 +111,7 @@ class DataPreparator:
     @staticmethod
     def select_columns_for_predictions(recent_cols=True):
         """
-        TODO - add description
+        TODO - add description + make the function better
         :return:
         """
         if not recent_cols:
@@ -341,7 +341,7 @@ class DataPreparator:
         return deepcopy(self.general_data_dict["seasons"][season_name]["player_info"])
 
     def load_game_df(self):
-        games_df = load_game_data_zan(force_recompute=self.force_recompute_method_data)
+        games_df = load_game_data(force_recompute=self.force_recompute_method_data)
         games_df["season_name"] = games_df["season_name"].str.replace("-", "-20")
 
         return games_df
