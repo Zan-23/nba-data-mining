@@ -69,3 +69,8 @@ The downloaded data will be present in the `data/raw/player_data` directory.
 Here we explicitly list the pages from which the data is scraped/downloaded:
 - https://eightthirtyfour.com/data
 - https://www.nba.com/stats/players/bio/
+
+## Presentation of project findings
+You can view a more detailed analysis of our project in the pdf presentation named 'final_presentation.pdf'.
+
+

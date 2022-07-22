@@ -13,3 +13,4 @@ __pycache__
 # Mac/OSX
 .DS_Store
 
+!data/static-player-data/player_info.csv
