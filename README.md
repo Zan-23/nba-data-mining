@@ -74,6 +74,7 @@ Here we explicitly list the pages from which the data is scraped/downloaded:
 - https://www.nba.com/stats/players/bio/
 
 ## Presentation of project findings
-You can view a more detailed analysis of our project in the pdf presentation named 'final_presentation.pdf'.
+You can view a more detailed analysis of our project in this 
+[pdf presentation](https://github.com/Zan-23/nba-data-mining/blob/main/final_presentation.pdf).
 
 
